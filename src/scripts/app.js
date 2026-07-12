@@ -20,6 +20,7 @@ const emptyState = {
   bookingResources: [],
   bookings: [],
   audits: [],
+  auditCycles: [],
   transfers: [],
   allocations: [],
   logs: [],
@@ -315,6 +316,11 @@ function renderAudit() {
     mins[1].textContent = vals;
     mins[2].textContent = flag;
   }
+  const cycle = db.auditCycles?.[0];
+  const heading = document.querySelector('[data-title="Asset audit"] h2');
+  const copy = document.querySelector('[data-title="Asset audit"] .page-head p');
+  if (heading && cycle) heading.textContent = cycle.name;
+  if (copy && cycle) copy.textContent = `${cycle.startDate} to ${cycle.endDate} · Auditors: ${cycle.auditors} · ${cycle.status}`;
 }
 function renderLogs() {
   const outputs = [
@@ -358,12 +364,15 @@ function renderDashboard() {
     '[data-title="Dashboard"] .stat strong',
   );
   if (nums.length) {
-    nums[0].textContent = db.assets.length;
     const allocated = db.assets.filter((x) => x.status === "Allocated").length;
     const available = db.assets.filter((x) => x.status === "Available").length;
+    const today = new Date().toISOString().slice(0, 10);
+    nums[0].textContent = available;
     nums[1].textContent = allocated;
-    nums[2].textContent = available;
-    nums[3].textContent = db.bookings.length;
+    nums[2].textContent = db.maintenance.filter((x) => x.date === "Today" || x.date?.startsWith(today)).length;
+    nums[3].textContent = db.bookings.filter((x) => x.status !== "Cancelled" && x.date >= today).length;
+    if (nums[4]) nums[4].textContent = db.transfers.filter((x) => x.status === "Pending").length;
+    if (nums[5]) nums[5].textContent = (db.allocations || []).filter((x) => x.status !== "Returned" && x.expectedReturn >= today).length;
     const percent = db.assets.length ? Math.round((allocated / db.assets.length) * 100) : 0;
     const utilization = document.getElementById("utilizationPercent");
     if (utilization) utilization.textContent = `${percent}%`;
@@ -422,6 +431,16 @@ function renderReports() {
           .map(([name, count]) => `<div class="list-row"><span>${esc(name)}</span><b>${count}</b></div>`)
           .join("")
       : '<div class="empty"><b>No assets</b>Status counts will appear here.</div>';
+  }
+  const heatmap = document.getElementById("bookingHeatmap");
+  if (heatmap) {
+    const hours = db.bookings.filter((x) => x.status !== "Cancelled").reduce((acc, x) => { const hour = `${String(Number(x.start.split(":")[0])).padStart(2, "0")}:00`; acc[hour] = (acc[hour] || 0) + 1; return acc; }, {});
+    heatmap.innerHTML = Object.entries(hours).sort().map(([hour, total]) => `<div class="list-row"><span>${hour}</span><b>${total} booking${total === 1 ? "" : "s"}</b></div>`).join("") || '<div class="empty"><b>No booking usage</b></div>';
+  }
+  const frequency = document.getElementById("maintenanceFrequency");
+  if (frequency) {
+    const counts = db.maintenance.reduce((acc, x) => { acc[x.asset] = (acc[x.asset] || 0) + 1; return acc; }, {});
+    frequency.innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([asset, total]) => `<div class="list-row"><span>${esc(asset)}</span><b>${total}</b></div>`).join("") || '<div class="empty"><b>No maintenance history</b></div>';
   }
 }
 function bindControls() {
@@ -523,6 +542,7 @@ function openModal(title) {
   if (title === "Add category") return editOrg("Category");
   if (title === "Add employee") return editOrg("Employee");
   if (title === "Book a resource") return bookingModal();
+  if (title === "Create audit cycle") return setModal(title, `<div class="form-grid"><div class="field full"><label>Cycle name</label><input name="name" required></div><div class="field"><label>Department scope</label><select name="department"><option value="">All departments</option>${optionList(db.departments.map((x) => x.name))}</select></div><div class="field"><label>Location scope</label><input name="location"></div><div class="field"><label>Start date</label><input type="date" name="startDate" required></div><div class="field"><label>End date</label><input type="date" name="endDate" required></div><div class="field full"><label>Auditors</label><input name="auditors" required placeholder="Comma-separated employee names"></div></div>`, async (fd) => { const cycle = await apiCreate("auditCycles", { id: uid("AUDIT"), ...fd, status: "Open", closedAt: "" }); db.auditCycles.unshift(cycle); await apiCreate("logs", addLog("Approval", `Audit cycle created: ${fd.name}`, fd.auditors)); }, true);
   if (title === "Allocate asset") {
     const available = db.assets.filter((x) => x.status === "Available" && !x.shared);
     return setModal(title, `<div class="form-grid"><div class="field full"><label>Available asset</label><select name="asset" required>${available.map((x) => `<option value="${esc(x.id)}">${esc(x.id)} - ${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>Holder type</label><select name="holderType"><option>Employee</option><option>Department</option></select></div><div class="field"><label>Holder</label><input name="holder" required list="allocationHolders"><datalist id="allocationHolders">${[...db.employees.map((x) => x.name), ...db.departments.map((x) => x.name)].map((x) => `<option value="${esc(x)}">`).join("")}</datalist></div><div class="field full"><label>Expected return</label><input type="date" name="expectedReturn"></div></div>`, async (fd) => {
@@ -833,13 +853,15 @@ bind('[data-title="Asset audit"] .alert .btn', () => {
   showScreen("notifications");
 });
 bind('[data-title="Asset audit"] .page-head .success', () => {
-  apiCreate("logs", addLog(
-    "Approval",
-    "Q3 audit cycle closed",
-    `${db.audits.filter((x) => x.status !== "Verified").length} discrepancies`,
-  )).catch((e) => toast(e.message || "Save failed"));
-  save();
-  toast("Audit cycle closed");
+  const cycle = db.auditCycles?.find((x) => x.status === "Open");
+  if (!cycle) return toast("No open audit cycle");
+  apiPatch("auditCycles", cycle.id, { status: "Closed", closedAt: new Date().toISOString() })
+    .then(() => {
+      cycle.status = "Closed";
+      return apiCreate("logs", addLog("Approval", `${cycle.name} closed`, `${db.audits.filter((x) => x.status !== "Verified").length} discrepancies`));
+    })
+    .then(() => { save(); toast("Audit cycle closed and locked"); })
+    .catch((e) => toast(e.message || "Unable to close audit"));
 });
 bind('[data-title="Activity & notifications"] .page-head .btn', () => {
   db.logs.forEach((x) => (x.read = true));

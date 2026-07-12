@@ -14,9 +14,9 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
     </div>
     <div class="grid stats">
       <div class="stat" style="--accent:#635bff">
-        <div class="stat-top"><span>Total assets</span><span class="stat-icon"><i data-lucide="boxes"></i></span></div>
+        <div class="stat-top"><span>Assets available</span><span class="stat-icon"><i data-lucide="boxes"></i></span></div>
         <strong>0</strong>
-        <span class="trend">Loaded from inventory</span>
+        <span class="trend">Ready for allocation</span>
       </div>
       <div class="stat" style="--accent:#14b8a6">
         <div class="stat-top"><span>Allocated</span><span class="stat-icon"><i data-lucide="trending-up"></i></span></div>
@@ -24,15 +24,17 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
         <span class="trend neutral">Current utilization</span>
       </div>
       <div class="stat" style="--accent:#3b82f6">
-        <div class="stat-top"><span>Available</span><span class="stat-icon"><i data-lucide="circle-check"></i></span></div>
+        <div class="stat-top"><span>Maintenance today</span><span class="stat-icon"><i data-lucide="circle-check"></i></span></div>
         <strong>0</strong>
-        <span class="trend">Ready assets</span>
+        <span class="trend">Requires attention</span>
       </div>
       <div class="stat" style="--accent:#f59e0b">
         <div class="stat-top"><span>Active bookings</span><span class="stat-icon"><i data-lucide="calendar-days"></i></span></div>
         <strong>0</strong>
         <span class="trend neutral">Scheduled bookings</span>
       </div>
+      <div class="stat" style="--accent:#8b5cf6"><div class="stat-top"><span>Pending transfers</span><span class="stat-icon"><i data-lucide="arrow-left-right"></i></span></div><strong>0</strong><span class="trend neutral">Awaiting approval</span></div>
+      <div class="stat" style="--accent:#ef4444"><div class="stat-top"><span>Upcoming returns</span><span class="stat-icon"><i data-lucide="undo-2"></i></span></div><strong>0</strong><span class="trend neutral">Scheduled check-ins</span></div>
     </div>
     <div class="alert">
       <span id="dashboardAlertText">No urgent alerts.</span>
