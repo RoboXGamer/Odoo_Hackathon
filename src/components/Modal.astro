@@ -1,0 +1,16 @@
+<div class="modal" id="modal" onclick="if(arguments[0].target===this)closeModal()">
+  <div class="modal-card" id="modalCard">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-error" id="modalError"></div>
+    <form id="modalForm">
+      <div id="modalBody"></div>
+      <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+        <button class="btn" type="button" onclick="closeModal()">Cancel</button>
+        <button class="btn primary" id="modalSave" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

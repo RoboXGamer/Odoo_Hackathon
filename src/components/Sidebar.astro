@@ -1,0 +1,21 @@
+---
+const { userName = 'User', userRole = 'Member', userEmail = '' } = Astro.props;
+const initials = String(userName)
+  .split(' ')
+  .map((part) => part[0])
+  .join('')
+  .slice(0, 2)
+  .toUpperCase();
+---
+
+<div class="brand">
+  <span class="brand-mark">A</span>AssetFlow
+</div>
+<div class="nav-label">Workspace</div>
+<nav class="nav" id="nav"></nav>
+<div class="sidebar-footer">
+  <div class="user">
+    <div class="avatar">{initials}</div>
+    <div><b>{userName}</b><small>{userEmail || userRole}</small></div>
+  </div>
+</div>
