@@ -123,6 +123,11 @@ export const bookings = sqliteTable('bookings', {
   date: text('date').notNull(),
   start: text('start').notNull(),
   end: text('end').notNull(),
+  status: text('status').notNull().default('Upcoming'),
+  requester: text('requester').notNull().default(''),
+  department: text('department').notNull().default(''),
+  reminderAt: text('reminder_at').notNull().default(''),
+  cancelledAt: text('cancelled_at').notNull().default(''),
 });
 
 export const audits = sqliteTable('audits', {

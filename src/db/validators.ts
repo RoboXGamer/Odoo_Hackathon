@@ -66,6 +66,11 @@ export const bookingSchema = z.object({
   date: z.iso.date(),
   start: timeText,
   end: timeText,
+  status: status(['Upcoming', 'Ongoing', 'Completed', 'Cancelled']).default('Upcoming'),
+  requester: z.string().trim().default(''),
+  department: z.string().trim().default(''),
+  reminderAt: z.string().trim().default(''),
+  cancelledAt: z.string().trim().default(''),
 }).refine((value) => value.end > value.start, {
   message: 'End time must be after start time.',
   path: ['end'],

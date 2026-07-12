@@ -129,7 +129,12 @@ export async function ensureDb() {
       title TEXT NOT NULL,
       date TEXT NOT NULL,
       start TEXT NOT NULL,
-      end TEXT NOT NULL
+      end TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Upcoming',
+      requester TEXT NOT NULL DEFAULT '',
+      department TEXT NOT NULL DEFAULT '',
+      reminder_at TEXT NOT NULL DEFAULT '',
+      cancelled_at TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS audits (
       asset TEXT PRIMARY KEY NOT NULL REFERENCES assets(id) ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -181,6 +186,11 @@ export async function ensureDb() {
     "ALTER TABLE assets ADD COLUMN attachments TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE transfers ADD COLUMN requested_at TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE transfers ADD COLUMN decided_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE bookings ADD COLUMN status TEXT NOT NULL DEFAULT 'Upcoming'",
+    "ALTER TABLE bookings ADD COLUMN requester TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE bookings ADD COLUMN department TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE bookings ADD COLUMN reminder_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE bookings ADD COLUMN cancelled_at TEXT NOT NULL DEFAULT ''",
   ]) {
     try {
       await client.execute(statement);
@@ -347,6 +357,12 @@ export async function createResourceItem(resource: ResourceName, payload: unknow
     if (values.holderType === 'Employee' && !(await existsByName(tables.employees, tables.employees.name, values.holder))) throw new Error(`Unknown employee: ${values.holder}`);
     if (values.holderType === 'Department' && !(await existsByName(tables.departments, tables.departments.name, values.holder))) throw new Error(`Unknown department: ${values.holder}`);
   }
+  if (resource === 'bookings') {
+    const existing = await db.select().from(tables.bookings);
+    if (existing.some((booking) => booking.status !== 'Cancelled' && booking.resource === values.resource && booking.date === values.date && values.start < booking.end && values.end > booking.start)) {
+      throw new Error('This slot overlaps with an existing booking. Choose another time.');
+    }
+  }
   await assertReferences(resource, values as Record<string, any>);
   await db.insert(config.table as any).values(values as any);
   if (resource === 'allocations') {
@@ -361,6 +377,12 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
   const values = parseUpdate(resource, payload);
   if (Object.keys(values).length === 0) return getResourceItem(resource, id);
   await assertReferences(resource, values as Record<string, any>);
+  if (resource === 'bookings' && ((values as any).date || (values as any).start || (values as any).end || (values as any).resource)) {
+    const current = await getResourceItem('bookings', id) as Record<string, any>;
+    const candidate = { ...current, ...values };
+    const existing = await db.select().from(tables.bookings);
+    if (existing.some((booking) => booking.id !== id && booking.status !== 'Cancelled' && booking.resource === candidate.resource && booking.date === candidate.date && candidate.start < booking.end && candidate.end > booking.start)) throw new Error('This slot overlaps with an existing booking. Choose another time.');
+  }
 
   await db.update(config.table as any).set(values as any).where(eq(config.idColumn as any, id));
   if (resource === 'transfers' && (values as any).status === 'Approved') {
