@@ -7,10 +7,17 @@ const normalizedDepartment = z.string().trim().transform((value) => ['-', '—']
 const timeText = z.string().trim().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'Expected time in HH:mm format');
 
 export const assetSchema = z.object({
-  id: requiredText,
+  id: requiredText.optional(),
   name: requiredText,
+  serialNumber: z.string().trim().default(''),
+  qrCode: z.string().trim().default(''),
   category: requiredText,
-  status: status(['Available', 'Allocated', 'Maintenance', 'Retired']),
+  status: status(['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed']).default('Available'),
+  condition: status(['New', 'Good', 'Fair', 'Damaged']).default('Good'),
+  acquisitionDate: z.string().trim().default(''),
+  acquisitionCost: z.coerce.number().nonnegative().default(0),
+  shared: z.coerce.boolean().default(false),
+  attachments: z.string().trim().default(''),
   department: normalizedDepartment,
   location: requiredText,
   owner: blankAsDash.default('-'),

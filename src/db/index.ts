@@ -69,8 +69,15 @@ export async function ensureDb() {
     CREATE TABLE IF NOT EXISTS assets (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
+      serial_number TEXT NOT NULL DEFAULT '',
+      qr_code TEXT NOT NULL DEFAULT '',
       category TEXT NOT NULL REFERENCES categories(name) ON UPDATE CASCADE ON DELETE RESTRICT,
       status TEXT NOT NULL,
+      condition TEXT NOT NULL DEFAULT 'Good',
+      acquisition_date TEXT NOT NULL DEFAULT '',
+      acquisition_cost INTEGER NOT NULL DEFAULT 0,
+      shared INTEGER NOT NULL DEFAULT 0,
+      attachments TEXT NOT NULL DEFAULT '',
       department TEXT NOT NULL REFERENCES departments(name) ON UPDATE CASCADE ON DELETE RESTRICT,
       location TEXT NOT NULL,
       owner TEXT NOT NULL,
@@ -151,6 +158,13 @@ export async function ensureDb() {
   for (const statement of [
     "ALTER TABLE employees ADD COLUMN user_id TEXT REFERENCES user(id) ON DELETE SET NULL",
     "ALTER TABLE employees ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'",
+    "ALTER TABLE assets ADD COLUMN serial_number TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN qr_code TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN condition TEXT NOT NULL DEFAULT 'Good'",
+    "ALTER TABLE assets ADD COLUMN acquisition_date TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN acquisition_cost INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE assets ADD COLUMN shared INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE assets ADD COLUMN attachments TEXT NOT NULL DEFAULT ''",
   ]) {
     try {
       await client.execute(statement);
@@ -300,7 +314,13 @@ export async function getResourceItem(resource: ResourceName, id: string) {
 export async function createResourceItem(resource: ResourceName, payload: unknown) {
   await ensureDb();
   const config = resourceConfig[resource];
-  const values = parseCreate(resource, payload);
+  const values = parseCreate(resource, payload) as Record<string, any>;
+  if (resource === 'assets' && !values.id) {
+    const rows = await db.select({ id: tables.assets.id }).from(tables.assets);
+    const next = rows.reduce((max, row) => Math.max(max, Number(row.id.match(/^AF-(\d+)$/)?.[1] ?? 0)), 0) + 1;
+    values.id = `AF-${String(next).padStart(4, '0')}`;
+  }
+  if (resource === 'assets' && !values.qrCode) values.qrCode = values.id;
   await assertReferences(resource, values as Record<string, any>);
   await db.insert(config.table as any).values(values as any);
   return getResourceItem(resource, String((values as any).id ?? (values as any).asset));
