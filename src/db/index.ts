@@ -1,28 +1,28 @@
-import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { createClient } from '@libsql/client';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-sqlite';
+import { drizzle } from 'drizzle-orm/libsql';
 import { count } from 'drizzle-orm';
 import * as tables from './schema';
 import { seedData } from './seed';
 import { type ResourceName, parseCreate, parseUpdate } from './validators';
 
-const dbPath = resolve(process.env.DATABASE_PATH ?? './data/assetflow.sqlite');
-mkdirSync(dirname(dbPath), { recursive: true });
+const databaseUrl = process.env.DATABASE_URL ?? 'libsql://assetflow-roboxgamer.aws-ap-south-1.turso.io';
+const authToken = process.env.TURSO_AUTH_TOKEN ?? process.env.DATABASE_AUTH_TOKEN;
 
-export const sqlite = new DatabaseSync(dbPath);
-sqlite.exec('PRAGMA foreign_keys = ON');
-sqlite.exec('PRAGMA journal_mode = WAL');
+export const client = createClient({
+  url: databaseUrl,
+  authToken,
+});
 
-export const db = drizzle({ client: sqlite });
+export const db = drizzle({ client });
 
 let initialized = false;
 
 export async function ensureDb() {
   if (initialized) return;
 
-  sqlite.exec(`
+  await client.execute('PRAGMA foreign_keys = ON');
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS user (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
