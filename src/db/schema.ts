@@ -141,6 +141,19 @@ export const transfers = sqliteTable('transfers', {
   status: text('status').notNull(),
 });
 
+export const allocations = sqliteTable('allocations', {
+  id: text('id').primaryKey(),
+  asset: text('asset').notNull().references(() => assets.id, { onDelete: 'restrict' }),
+  holderType: text('holder_type').notNull(),
+  holder: text('holder').notNull(),
+  allocatedAt: text('allocated_at').notNull(),
+  expectedReturn: text('expected_return').notNull().default(''),
+  returnedAt: text('returned_at').notNull().default(''),
+  status: text('status').notNull().default('Active'),
+  checkInCondition: text('check_in_condition').notNull().default(''),
+  checkInNotes: text('check_in_notes').notNull().default(''),
+});
+
 export const logs = sqliteTable('activity_logs', {
   id: int('id').primaryKey({ autoIncrement: true }),
   type: text('type').notNull(),
@@ -164,5 +177,6 @@ export const schema = {
   bookings,
   audits,
   transfers,
+  allocations,
   logs,
 };

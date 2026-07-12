@@ -21,6 +21,7 @@ const emptyState = {
   bookings: [],
   audits: [],
   transfers: [],
+  allocations: [],
   logs: [],
 };
 let db = clone(emptyState),

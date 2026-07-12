@@ -145,6 +145,18 @@ export async function ensureDb() {
       reason TEXT NOT NULL,
       status TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS allocations (
+      id TEXT PRIMARY KEY NOT NULL,
+      asset TEXT NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+      holder_type TEXT NOT NULL,
+      holder TEXT NOT NULL,
+      allocated_at TEXT NOT NULL,
+      expected_return TEXT NOT NULL DEFAULT '',
+      returned_at TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'Active',
+      check_in_condition TEXT NOT NULL DEFAULT '',
+      check_in_notes TEXT NOT NULL DEFAULT ''
+    );
     CREATE TABLE IF NOT EXISTS activity_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
@@ -205,6 +217,7 @@ export async function getAppState() {
     bookings: await db.select().from(tables.bookings),
     audits: await db.select().from(tables.audits),
     transfers: await db.select().from(tables.transfers),
+    allocations: await db.select().from(tables.allocations),
     logs: await db.select({
       id: tables.logs.id,
       type: tables.logs.type,
@@ -226,6 +239,7 @@ const resourceConfig = {
   bookings: { table: tables.bookings, idColumn: tables.bookings.id },
   audits: { table: tables.audits, idColumn: tables.audits.asset },
   transfers: { table: tables.transfers, idColumn: tables.transfers.id },
+  allocations: { table: tables.allocations, idColumn: tables.allocations.id },
   logs: { table: tables.logs, idColumn: tables.logs.id },
 } as const;
 
@@ -264,7 +278,7 @@ async function assertReferences(resource: ResourceName, values: Record<string, a
     }
   }
 
-  if ((resource === 'maintenance' || resource === 'audits' || resource === 'transfers') && values.asset && !(await exists('assets', values.asset))) {
+  if ((resource === 'maintenance' || resource === 'audits' || resource === 'transfers' || resource === 'allocations') && values.asset && !(await exists('assets', values.asset))) {
     throw new Error(`Unknown asset: ${values.asset}`);
   }
 
@@ -321,8 +335,17 @@ export async function createResourceItem(resource: ResourceName, payload: unknow
     values.id = `AF-${String(next).padStart(4, '0')}`;
   }
   if (resource === 'assets' && !values.qrCode) values.qrCode = values.id;
+  if (resource === 'allocations') {
+    const [asset] = await db.select().from(tables.assets).where(eq(tables.assets.id, values.asset));
+    if (!asset || asset.status !== 'Available') throw new Error(`Asset is currently held by ${asset?.owner || 'another holder'}. Submit a transfer request instead.`);
+    if (values.holderType === 'Employee' && !(await existsByName(tables.employees, tables.employees.name, values.holder))) throw new Error(`Unknown employee: ${values.holder}`);
+    if (values.holderType === 'Department' && !(await existsByName(tables.departments, tables.departments.name, values.holder))) throw new Error(`Unknown department: ${values.holder}`);
+  }
   await assertReferences(resource, values as Record<string, any>);
   await db.insert(config.table as any).values(values as any);
+  if (resource === 'allocations') {
+    await db.update(tables.assets).set({ status: 'Allocated', owner: values.holderType === 'Employee' ? values.holder : '-', department: values.holderType === 'Department' ? values.holder : (await db.select().from(tables.employees).where(eq(tables.employees.name, values.holder)))[0]?.department ?? 'Unassigned', updated: 'Just now' }).where(eq(tables.assets.id, values.asset));
+  }
   return getResourceItem(resource, String((values as any).id ?? (values as any).asset));
 }
 

@@ -94,6 +94,19 @@ export const transferSchema = z.object({
   status: status(['Pending', 'Approved', 'Rejected', 'Completed']).default('Pending'),
 });
 
+export const allocationSchema = z.object({
+  id: requiredText,
+  asset: requiredText,
+  holderType: status(['Employee', 'Department']),
+  holder: requiredText,
+  allocatedAt: z.string().trim().default(() => new Date().toISOString()),
+  expectedReturn: z.string().trim().default(''),
+  returnedAt: z.string().trim().default(''),
+  status: status(['Active', 'Returned']).default('Active'),
+  checkInCondition: z.string().trim().default(''),
+  checkInNotes: z.string().trim().default(''),
+});
+
 export const logSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
   type: requiredText,
@@ -113,6 +126,7 @@ export const resourceSchemas = {
   bookings: bookingSchema,
   audits: auditSchema,
   transfers: transferSchema,
+  allocations: allocationSchema,
   logs: logSchema,
 } as const;
 
