@@ -38,6 +38,10 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
       <span id="dashboardAlertText">No urgent alerts.</span>
       <button class="btn danger" onclick="showScreen('notifications')">Review now</button>
     </div>
+    <div class="grid usage-grid" style="margin-bottom:18px">
+      <div class="panel"><div class="panel-head"><h3>Overdue returns</h3></div><div id="overdueReturns"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Upcoming returns</h3></div><div id="upcomingReturns"></div></div>
+    </div>
     <div class="grid quick">
       <button class="btn" onclick="openModal('Register asset')"><i data-lucide="plus"></i>Register asset</button>
       <button class="btn" onclick="showScreen('booking')"><i data-lucide="calendar-plus"></i>Book resource</button>

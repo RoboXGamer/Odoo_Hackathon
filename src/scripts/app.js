@@ -292,7 +292,7 @@ function renderAllocation() {
   if (history) {
     const records = (db.allocations || []).filter((x) => x.asset === selectedAsset?.id);
     history.innerHTML = selectedAsset
-      ? (records.map((x) => `<div class="history-row"><span class="history-line"></span><div><b>${esc(x.holderType)}: ${esc(x.holder)}</b><small>${esc(x.allocatedAt)}${x.expectedReturn ? ` · Expected ${esc(x.expectedReturn)}` : ""} · ${esc(x.status)}</small></div></div>`).join("") || `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`)
+      ? (records.map((x) => `<div class="history-row"><span class="history-line"></span><div><b>${esc(x.holderType)}: ${esc(x.holder)} ${x.overdue ? '<span class="badge red">Overdue</span>' : ""}</b><small>${esc(x.allocatedAt)}${x.expectedReturn ? ` · Expected ${esc(x.expectedReturn)}` : ""} · ${esc(x.status)}</small>${x.status === "Active" ? `<button class="action-btn" onclick="requestReturn('${x.id}')">Request return</button>` : x.status === "Return Requested" ? `<button class="action-btn approval-action" onclick="completeReturn('${x.id}')">Approve check-in</button>` : ""}</div></div>`).join("") || `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`)
       : '<div class="empty"><b>No asset selected</b>Choose an asset to view custody.</div>';
   }
   const requests = document.getElementById("transferRequests");
@@ -384,6 +384,12 @@ function renderDashboard() {
       .map(([label, count, color]) => `<div class="legend-row" style="--c:${color}"><span>${label}</span><b>${count}</b></div>`)
       .join("");
   }
+  const activeReturns = (db.allocations || []).filter((x) => x.status !== "Returned" && x.expectedReturn);
+  const today = new Date().toISOString().slice(0, 10);
+  const renderReturns = (items) => items.length ? items.map((x) => `<div class="list-row"><span>${esc(x.asset)} · ${esc(x.holder)}</span><b>${esc(x.expectedReturn)}</b></div>`).join("") : '<div class="empty"><b>None</b></div>';
+  const overdue = document.getElementById("overdueReturns"), upcoming = document.getElementById("upcomingReturns");
+  if (overdue) overdue.innerHTML = renderReturns(activeReturns.filter((x) => x.expectedReturn < today));
+  if (upcoming) upcoming.innerHTML = renderReturns(activeReturns.filter((x) => x.expectedReturn >= today));
 }
 function renderReports() {
   const used = document.getElementById("mostUsedAssets");
@@ -771,6 +777,14 @@ function decideTransfer(id, status) {
     return apiCreate("logs", addLog("Approval", `Transfer ${transfer.status.toLowerCase()}: ${transfer.asset}`, `To ${transfer.to}`));
   }).then(save).catch((e) => toast(e.message || "Unable to update transfer"));
 }
+function requestReturn(id) {
+  apiPatch("allocations", id, { status: "Return Requested" }).then(() => { const item = db.allocations.find((x) => x.id === id); if (item) item.status = "Return Requested"; save(); }).catch((e) => toast(e.message));
+}
+function completeReturn(id) {
+  const condition = prompt("Check-in condition: New, Good, Fair, or Damaged", "Good") || "Good";
+  const notes = prompt("Check-in notes", "") || "";
+  apiPatch("allocations", id, { status: "Returned", returnedAt: new Date().toISOString(), checkInCondition: condition, checkInNotes: notes }).then(() => { const item = db.allocations.find((x) => x.id === id); if (item) Object.assign(item, { status: "Returned", checkInCondition: condition, checkInNotes: notes }); const asset = db.assets.find((x) => x.id === item?.asset); if (asset) Object.assign(asset, { status: "Available", owner: "-", condition }); save(); }).catch((e) => toast(e.message));
+}
 function exportCSV(kind) {
   let rows =
     kind === "assets"
@@ -887,6 +901,8 @@ Object.assign(window, {
   updateAudit,
   updateAuditNote,
   decideTransfer,
+  requestReturn,
+  completeReturn,
 });
 createIcons({ icons });
 const appShell = document.querySelector(".app");
