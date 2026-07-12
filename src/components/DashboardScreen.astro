@@ -15,27 +15,27 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
     <div class="grid stats">
       <div class="stat" style="--accent:#635bff">
         <div class="stat-top"><span>Total assets</span><span class="stat-icon"><i data-lucide="boxes"></i></span></div>
-        <strong>128</strong>
-        <span class="trend">8.2% this month</span>
+        <strong>0</strong>
+        <span class="trend">Loaded from inventory</span>
       </div>
       <div class="stat" style="--accent:#14b8a6">
         <div class="stat-top"><span>Allocated</span><span class="stat-icon"><i data-lucide="trending-up"></i></span></div>
-        <strong>76</strong>
-        <span class="trend neutral">59.4% utilization</span>
+        <strong>0</strong>
+        <span class="trend neutral">Current utilization</span>
       </div>
       <div class="stat" style="--accent:#3b82f6">
         <div class="stat-top"><span>Available</span><span class="stat-icon"><i data-lucide="circle-check"></i></span></div>
-        <strong>43</strong>
-        <span class="trend">5 ready today</span>
+        <strong>0</strong>
+        <span class="trend">Ready assets</span>
       </div>
       <div class="stat" style="--accent:#f59e0b">
         <div class="stat-top"><span>Active bookings</span><span class="stat-icon"><i data-lucide="calendar-days"></i></span></div>
-        <strong>9</strong>
-        <span class="trend neutral">3 pending transfers</span>
+        <strong>0</strong>
+        <span class="trend neutral">Scheduled bookings</span>
       </div>
     </div>
     <div class="alert">
-      <span>3 assets are overdue for return and need follow-up.</span>
+      <span id="dashboardAlertText">No urgent alerts.</span>
       <button class="btn danger" onclick="showScreen('notifications')">Review now</button>
     </div>
     <div class="grid quick">
@@ -61,12 +61,8 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
             <div class="panel-sub">Current portfolio health</div>
           </div>
         </div>
-        <div class="ring-wrap"><div class="ring"><strong>72%</strong></div></div>
-        <div class="legend">
-          <div class="legend-row" style="--c:#635bff"><span>Allocated</span><b>76</b></div>
-          <div class="legend-row" style="--c:#14b8a6"><span>Available</span><b>43</b></div>
-          <div class="legend-row" style="--c:#f59e0b"><span>Maintenance</span><b>9</b></div>
-        </div>
+        <div class="ring-wrap"><div class="ring"><strong id="utilizationPercent">0%</strong></div></div>
+        <div class="legend" id="utilizationLegend"></div>
       </div>
     </div>
   </section>

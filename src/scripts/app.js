@@ -11,221 +11,19 @@ const routeByScreen = {
   reports: "/reports",
   notifications: "/notifications",
 };
-const seed = {
-  assets: [
-    {
-      id: "AF-0012",
-      name: "Dell Latitude",
-      category: "Electronics",
-      status: "Allocated",
-      department: "Engineering",
-      location: "Bengaluru",
-      owner: "Priya Shah",
-      updated: "2h ago",
-    },
-    {
-      id: "AF-0062",
-      name: "Epson Projector",
-      category: "Electronics",
-      status: "Maintenance",
-      department: "Facilities",
-      location: "HQ Floor 2",
-      owner: "—",
-      updated: "1d ago",
-    },
-    {
-      id: "AF-0201",
-      name: "Ergo Office Chair",
-      category: "Furniture",
-      status: "Available",
-      department: "—",
-      location: "Warehouse",
-      owner: "—",
-      updated: "3d ago",
-    },
-    {
-      id: "AF-0114",
-      name: "MacBook Pro 14",
-      category: "Electronics",
-      status: "Allocated",
-      department: "Design",
-      location: "Mumbai",
-      owner: "Arjun Nair",
-      updated: "5h ago",
-    },
-    {
-      id: "AF-0343",
-      name: "Tata Ace Van",
-      category: "Vehicle",
-      status: "Available",
-      department: "Field Operations",
-      location: "Pune Depot",
-      owner: "—",
-      updated: "1d ago",
-    },
-  ],
-  departments: [
-    {
-      id: "DEP-1",
-      name: "Engineering",
-      head: "Aditi Rao",
-      parent: "—",
-      employees: 42,
-      status: "Active",
-    },
-    {
-      id: "DEP-2",
-      name: "Facilities",
-      head: "Rohan Mehta",
-      parent: "—",
-      employees: 18,
-      status: "Active",
-    },
-    {
-      id: "DEP-3",
-      name: "Field Operations (East)",
-      head: "Sana Iqbal",
-      parent: "Field Operations",
-      employees: 26,
-      status: "Inactive",
-    },
-  ],
-  categories: [
-    { id: "CAT-1", name: "Electronics", count: 64, status: "Active" },
-    { id: "CAT-2", name: "Furniture", count: 38, status: "Active" },
-    { id: "CAT-3", name: "Vehicle", count: 12, status: "Active" },
-  ],
-  employees: [
-    {
-      id: "EMP-1",
-      name: "Priya Shah",
-      department: "Engineering",
-      email: "priya@assetflow.local",
-      status: "Active",
-    },
-    {
-      id: "EMP-2",
-      name: "Arjun Nair",
-      department: "Design",
-      email: "arjun@assetflow.local",
-      status: "Active",
-    },
-    {
-      id: "EMP-3",
-      name: "Rohan Mehta",
-      department: "Facilities",
-      email: "rohan@assetflow.local",
-      status: "Active",
-    },
-  ],
-  maintenance: [
-    {
-      id: "MR-101",
-      asset: "AF-0062",
-      title: "Projector bulb not turning on",
-      status: "Pending",
-      assignee: "Unassigned",
-      date: "2h ago",
-    },
-    {
-      id: "MR-102",
-      asset: "AF-0031",
-      title: "AC unit making noise",
-      status: "Approved",
-      assignee: "Unassigned",
-      date: "4h ago",
-    },
-    {
-      id: "MR-103",
-      asset: "AF-0038",
-      title: "Forklift inspection",
-      status: "Technician assigned",
-      assignee: "R. Varma",
-      date: "Today",
-    },
-    {
-      id: "MR-104",
-      asset: "AF-0007",
-      title: "Printer jam",
-      status: "In progress",
-      assignee: "S. Kapoor",
-      date: "Yesterday",
-    },
-  ],
-  bookings: [
-    {
-      id: "BK-001",
-      resource: "Conference Room B2",
-      title: "Procurement team",
-      date: "2026-07-07",
-      start: "9:00",
-      end: "10:00",
-    },
-    {
-      id: "BK-002",
-      resource: "Conference Room B2",
-      title: "Design team",
-      date: "2026-07-07",
-      start: "10:30",
-      end: "11:45",
-    },
-  ],
-  audits: [
-    {
-      asset: "AF-003",
-      name: "Dell laptop",
-      location: "Desk E12",
-      status: "Verified",
-      note: "Serial matched",
-    },
-    {
-      asset: "AF-9921",
-      name: "Office chair",
-      location: "Desk E14",
-      status: "Missing",
-      note: "Not found at desk",
-    },
-    {
-      asset: "AF-9838",
-      name: "Monitor",
-      location: "Desk E15",
-      status: "Damaged",
-      note: "Panel crack",
-    },
-  ],
+const emptyState = {
+  assets: [],
+  departments: [],
+  categories: [],
+  employees: [],
+  maintenance: [],
+  bookingResources: [],
+  bookings: [],
+  audits: [],
   transfers: [],
-  logs: [
-    {
-      type: "Allocation",
-      title: "Asset AF-0114 registered",
-      detail: "MacBook Pro 14",
-      time: "15 min ago",
-      read: false,
-    },
-    {
-      type: "Booking",
-      title: "Booking confirmed",
-      detail: "Conference Room B2",
-      time: "1h ago",
-      read: false,
-    },
-    {
-      type: "Maintenance",
-      title: "MR-101 moved to Pending",
-      detail: "Projector bulb",
-      time: "2h ago",
-      read: false,
-    },
-    {
-      type: "Alert",
-      title: "Asset AF-9921 flagged",
-      detail: "Q3 audit discrepancy",
-      time: "3h ago",
-      read: false,
-    },
-  ],
+  logs: [],
 };
-let db = clone(seed),
+let db = clone(emptyState),
   orgTab = "Departments",
   assetFilters = {
     q: "",
@@ -243,10 +41,10 @@ async function load() {
   try {
     const res = await fetch("/api/bootstrap");
     if (!res.ok) throw Error("Unable to load workspace data");
-    return Object.assign(clone(seed), await res.json());
+    return Object.assign(clone(emptyState), await res.json());
   } catch (e) {
-    toast(e.message || "Using local fallback data");
-    return clone(seed);
+    toast(e.message || "Unable to load workspace data");
+    return clone(emptyState);
   }
 }
 function save() {
@@ -296,6 +94,8 @@ function renderAll() {
   renderAudit();
   renderLogs();
   renderDashboard();
+  renderAllocation();
+  renderReports();
   bindControls();
 }
 function renderAssets() {
@@ -338,8 +138,9 @@ function renderOrg() {
   const button = document.querySelector(
     '[data-title="Organization setup"] .page-head .primary',
   );
-  button.textContent = `＋ Add ${orgTab.slice(0, -1).toLowerCase()}`;
-  button.onclick = () => openModal("Add " + orgTab.slice(0, -1));
+  const singular = { Departments: "department", Categories: "category", Employees: "employee" }[orgTab];
+  button.textContent = `+ Add ${singular}`;
+  button.onclick = () => openModal("Add " + singular);
   if (orgTab === "Departments") {
     head.innerHTML =
       "<tr><th>Department</th><th>Head</th><th>Parent</th><th>Employees</th><th>Status</th><th></th></tr>";
@@ -347,7 +148,7 @@ function renderOrg() {
       .filter((x) => x.name.toLowerCase().includes(search))
       .map(
         (x) =>
-          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.head)}</td><td>${esc(x.parent)}</td><td>${x.employees}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="event.stopPropagation();editOrg('Department','${x.id}')">Edit</button></td></tr>`,
+          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.head)}</td><td>${esc(x.parent)}</td><td>${x.employees}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="event.stopPropagation();editOrg('Department','${x.id}')">Edit</button><button class="action-btn danger-text" onclick="event.stopPropagation();deleteOrg('Department','${x.id}')">Delete</button></td></tr>`,
       )
       .join("");
   } else if (orgTab === "Categories") {
@@ -357,7 +158,7 @@ function renderOrg() {
       .filter((x) => x.name.toLowerCase().includes(search))
       .map(
         (x) =>
-          `<tr><td><b>${esc(x.name)}</b></td><td>${x.count}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="editOrg('Category','${x.id}')">Edit</button></td></tr>`,
+          `<tr><td><b>${esc(x.name)}</b></td><td>${x.count}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="event.stopPropagation();editOrg('Category','${x.id}')">Edit</button><button class="action-btn danger-text" onclick="event.stopPropagation();deleteOrg('Category','${x.id}')">Delete</button></td></tr>`,
       )
       .join("");
   } else {
@@ -435,9 +236,10 @@ function renderBookings() {
     '[data-title="Resource booking"] .timeline',
   );
   if (!tl) return;
+  const resources = (db.bookingResources?.length ? db.bookingResources.map((x) => x.name) : [...new Set(db.bookings.map((x) => x.resource))]);
   const resource =
-    document.getElementById("bookingResource")?.value || "Conference Room B2";
-  const day = document.getElementById("bookingDay")?.value || "2026-07-07";
+    document.getElementById("bookingResource")?.value || resources[0] || "";
+  const day = document.getElementById("bookingDay")?.value || new Date().toISOString().slice(0, 10);
   const arr = db.bookings.filter(
     (b) => b.resource === resource && b.date === day,
   );
@@ -453,8 +255,44 @@ function renderBookings() {
   const toolbar = document.querySelector(
     '[data-title="Resource booking"] .toolbar',
   );
-  if (toolbar && !document.getElementById("bookingDay"))
-    toolbar.innerHTML = `<select class="btn" id="bookingResource" style="flex:1"><option>Conference Room B2</option><option>Projector AF-0062</option><option>Training Room A1</option></select><input class="btn" id="bookingDay" type="date" value="2026-07-07">`;
+  const resourceSelect = document.getElementById("bookingResource");
+  const dayInput = document.getElementById("bookingDay");
+  if (resourceSelect && !resourceSelect.dataset.loaded) {
+    resourceSelect.dataset.loaded = 1;
+    resourceSelect.innerHTML = optionList(resources, resource);
+  }
+  if (dayInput && !dayInput.value) dayInput.value = day;
+  if (toolbar && !dayInput)
+    toolbar.innerHTML = `<select class="btn" id="bookingResource" style="flex:1">${optionList(resources)}</select><input class="btn" id="bookingDay" type="date" value="${esc(day)}">`;
+}
+function renderAllocation() {
+  const sec = document.querySelector('[data-title="Allocation & transfer"]');
+  if (!sec) return;
+  const assetSelect = document.getElementById("transferAsset");
+  const employeeSelect = document.getElementById("transferEmployee");
+  if (assetSelect && !assetSelect.dataset.loaded) {
+    assetSelect.dataset.loaded = 1;
+    assetSelect.innerHTML = db.assets.map((a) => `<option value="${esc(a.id)}">${esc(a.id)} - ${esc(a.name)}</option>`).join("");
+  }
+  if (employeeSelect && !employeeSelect.dataset.loaded) {
+    employeeSelect.dataset.loaded = 1;
+    employeeSelect.innerHTML = `<option value="">Select employee...</option>${db.employees.map((e) => `<option value="${esc(e.name)}">${esc(e.name)}</option>`).join("")}`;
+  }
+  const selectedAsset = db.assets.find((a) => a.id === assetSelect?.value) || db.assets[0];
+  const from = document.getElementById("transferFrom");
+  if (from && selectedAsset) from.value = selectedAsset.owner || "";
+  const warning = document.getElementById("transferWarningTitle");
+  if (warning) {
+    warning.textContent = selectedAsset?.owner
+      ? `Currently allocated to ${selectedAsset.owner} (${selectedAsset.department})`
+      : "Select an asset to review custody.";
+  }
+  const history = document.getElementById("allocationHistory");
+  if (history) {
+    history.innerHTML = selectedAsset
+      ? `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`
+      : '<div class="empty"><b>No asset selected</b>Choose an asset to view custody.</div>';
+  }
 }
 function renderAudit() {
   const body = document.querySelector('[data-title="Asset audit"] tbody');
@@ -517,13 +355,63 @@ function renderDashboard() {
   );
   if (nums.length) {
     nums[0].textContent = db.assets.length;
-    nums[1].textContent = db.assets.filter(
-      (x) => x.status === "Allocated",
-    ).length;
-    nums[2].textContent = db.assets.filter(
-      (x) => x.status === "Available",
-    ).length;
+    const allocated = db.assets.filter((x) => x.status === "Allocated").length;
+    const available = db.assets.filter((x) => x.status === "Available").length;
+    nums[1].textContent = allocated;
+    nums[2].textContent = available;
     nums[3].textContent = db.bookings.length;
+    const percent = db.assets.length ? Math.round((allocated / db.assets.length) * 100) : 0;
+    const utilization = document.getElementById("utilizationPercent");
+    if (utilization) utilization.textContent = `${percent}%`;
+  }
+  const alertText = document.getElementById("dashboardAlertText");
+  if (alertText) {
+    const alerts = db.logs.filter((x) => x.type === "Alert" && !x.read).length;
+    alertText.textContent = alerts ? `${alerts} unread alerts need follow-up.` : "No urgent alerts.";
+  }
+  const legend = document.getElementById("utilizationLegend");
+  if (legend) {
+    const rows = [
+      ["Allocated", db.assets.filter((x) => x.status === "Allocated").length, "#635bff"],
+      ["Available", db.assets.filter((x) => x.status === "Available").length, "#14b8a6"],
+      ["Maintenance", db.assets.filter((x) => x.status === "Maintenance").length, "#f59e0b"],
+    ];
+    legend.innerHTML = rows
+      .map(([label, count, color]) => `<div class="legend-row" style="--c:${color}"><span>${label}</span><b>${count}</b></div>`)
+      .join("");
+  }
+}
+function renderReports() {
+  const used = document.getElementById("mostUsedAssets");
+  if (used) {
+    const counts = db.bookings.reduce((acc, booking) => {
+      acc[booking.resource] = (acc[booking.resource] || 0) + 1;
+      return acc;
+    }, {});
+    const rows = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    const max = Math.max(1, ...rows.map(([, count]) => count));
+    used.innerHTML = rows.length
+      ? rows
+          .map(
+            ([name, count]) =>
+              `<div class="list-row"><span>${esc(name)}</span><div class="progress"><span style="width:${Math.round((count / max) * 100)}%"></span></div></div>`,
+          )
+          .join("")
+      : '<div class="empty"><b>No usage data</b>Bookings will appear here.</div>';
+  }
+  const status = document.getElementById("assetsByStatus");
+  if (status) {
+    const counts = db.assets.reduce((acc, asset) => {
+      acc[asset.status] = (acc[asset.status] || 0) + 1;
+      return acc;
+    }, {});
+    status.innerHTML = Object.entries(counts).length
+      ? Object.entries(counts)
+          .map(([name, count]) => `<div class="list-row"><span>${esc(name)}</span><b>${count}</b></div>`)
+          .join("")
+      : '<div class="empty"><b>No assets</b>Status counts will appear here.</div>';
   }
 }
 function bindControls() {
@@ -583,11 +471,22 @@ function bindControls() {
     br.onchange = renderBookings;
     bd.onchange = renderBookings;
   }
+  const transferAsset = document.getElementById("transferAsset");
+  if (transferAsset && !transferAsset.dataset.bound) {
+    transferAsset.dataset.bound = 1;
+    transferAsset.onchange = renderAllocation;
+  }
 }
-const fields = {
-  asset: `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required></div><div class="field"><label>Asset tag *</label><input name="id" required placeholder="AF-0000"></div><div class="field"><label>Category</label><select name="category">${db.categories.map((x) => `<option>${x.name}</option>`).join("")}</select></div><div class="field"><label>Status</label><select name="status"><option>Available</option><option>Allocated</option><option>Maintenance</option><option>Retired</option></select></div><div class="field"><label>Department</label><select name="department"><option>—</option>${db.departments.map((x) => `<option>${x.name}</option>`).join("")}</select></div><div class="field"><label>Location *</label><input name="location" required></div><div class="field full"><label>Assigned owner</label><input name="owner" placeholder="Optional"></div></div>`,
-};
-function setModal(title, html, action, wide = false) {
+function optionList(items, selected = "") {
+  return items
+    .map((value) => `<option ${value === selected ? "selected" : ""}>${esc(value)}</option>`)
+    .join("");
+}
+function assetForm(item = {}) {
+  const categories = db.categories.map((x) => x.name);
+  const departments = db.departments.map((x) => x.name);
+  return `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Asset tag *</label><input name="id" required placeholder="AF-0000" value="${esc(item.id || "")}"></div><div class="field"><label>Category</label><select name="category" required>${optionList(categories, item.category)}</select></div><div class="field"><label>Status</label><select name="status"><option ${item.status === "Available" ? "selected" : ""}>Available</option><option ${item.status === "Allocated" ? "selected" : ""}>Allocated</option><option ${item.status === "Maintenance" ? "selected" : ""}>Maintenance</option><option ${item.status === "Retired" ? "selected" : ""}>Retired</option></select></div><div class="field"><label>Department</label><select name="department" required>${optionList(departments, item.department)}</select></div><div class="field"><label>Location *</label><input name="location" required value="${esc(item.location || "")}"></div><div class="field full"><label>Assigned owner</label><input name="owner" placeholder="Optional" value="${esc(item.owner || "")}"></div></div>`;
+}function setModal(title, html, action, wide = false) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = html;
   document.getElementById("modalError").classList.remove("show");
@@ -599,7 +498,7 @@ function openModal(title) {
   if (title === "Register asset")
     return setModal(
       title,
-      fields.asset,
+      assetForm(),
       async (fd) => {
         if (db.assets.some((x) => x.id === fd.id))
           throw Error("That asset tag already exists.");
@@ -611,6 +510,8 @@ function openModal(title) {
       true,
     );
   if (title === "Add department") return editOrg("Department");
+  if (title === "Add category") return editOrg("Category");
+  if (title === "Add employee") return editOrg("Employee");
   if (title === "Book a resource") return bookingModal();
   if (title === "Maintenance request" || title === "Raise requests")
     return maintenanceModal();
@@ -687,6 +588,22 @@ function editOrg(type, id) {
     ));
   });
 }
+async function deleteOrg(type, id) {
+  const key = type === "Department" ? "departments" : "categories";
+  const item = db[key].find((x) => x.id === id);
+  if (!item) return;
+  if (!confirm(`Delete ${type.toLowerCase()} "${item.name}"?`)) return;
+
+  try {
+    await apiDelete(key, id);
+    db[key] = db[key].filter((x) => x.id !== id);
+    await apiCreate("logs", addLog("Alert", `${type} ${item.name} deleted`, "Organization setup"));
+    save();
+    toast(`${type} deleted`);
+  } catch (e) {
+    toast(e.message || "Delete failed");
+  }
+}
 function openAsset(id) {
   const a = db.assets.find((x) => x.id === id);
   if (!a) return;
@@ -701,7 +618,7 @@ function editAsset(id) {
   const a = db.assets.find((x) => x.id === id);
   setModal(
     "Edit asset",
-    fields.asset,
+    assetForm(a),
     async (fd) => {
       if (fd.id !== id && db.assets.some((x) => x.id === fd.id))
         throw Error("That asset tag already exists.");
@@ -710,14 +627,6 @@ function editAsset(id) {
       await apiCreate("logs", addLog("Allocation", `${fd.id} updated`, fd.name));
     },
     true,
-  );
-  setTimeout(
-    () =>
-      Object.entries(a).forEach(([k, v]) => {
-        const x = document.querySelector(`#modal [name="${k}"]`);
-        if (x) x.value = v;
-      }),
-    0,
   );
   closeDrawer();
 }
@@ -771,9 +680,10 @@ function moveCard(id, index) {
   save();
 }
 function bookingModal() {
+  const resources = (db.bookingResources?.length ? db.bookingResources.map((x) => x.name) : [...new Set(db.bookings.map((x) => x.resource))]);
   setModal(
     "Book a resource",
-    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource"><option>Conference Room B2</option><option>Projector AF-0062</option><option>Training Room A1</option></select></div><div class="field full"><label>Purpose *</label><input name="title" required></div><div class="field"><label>Date</label><input type="date" name="date" required value="2026-07-07"></div><div></div><div class="field"><label>Start</label><input type="time" name="start" required value="10:00"></div><div class="field"><label>End</label><input type="time" name="end" required value="11:00"></div></div>`,
+    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required></div><div class="field"><label>Date</label><input type="date" name="date" required value="${new Date().toISOString().slice(0, 10)}"></div><div></div><div class="field"><label>Start</label><input type="time" name="start" required value="10:00"></div><div class="field"><label>End</label><input type="time" name="end" required value="11:00"></div></div>`,
     async (fd) => {
       if (fd.end <= fd.start) throw Error("End time must be after start time.");
       if (
@@ -825,10 +735,10 @@ function updateAuditNote(i, note) {
 }
 function submitTransfer() {
   const sec = document.querySelector('[data-title="Allocation & transfer"]'),
-    asset = sec.querySelector("select").value,
-    to = sec.querySelectorAll("select")[1].value,
+    asset = document.getElementById("transferAsset")?.value,
+    to = document.getElementById("transferEmployee")?.value,
     reason = sec.querySelector("textarea").value.trim();
-  if (to === "Select employee..." || !reason)
+  if (!asset || !to || !reason)
     return toast("Choose an employee and enter a reason");
   const item = { id: uid("TR"), asset, to, reason, status: "Pending" };
   db.transfers.push(item);
@@ -948,6 +858,7 @@ Object.assign(window, {
   editAsset,
   deleteAsset,
   editOrg,
+  deleteOrg,
   editMaintenance,
   moveCard,
   deleteBooking,
@@ -1017,3 +928,8 @@ load().then((data) => {
   renderAll();
   createIcons({ icons });
 });
+
+
+
+
+
