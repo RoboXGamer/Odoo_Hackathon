@@ -3,7 +3,7 @@ const { title = 'Dashboard' } = Astro.props;
 ---
 
 <div style="display:flex;align-items:center;gap:12px">
-  <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open menu"><i data-lucide="menu"></i></button>
+  <button class="icon-btn menu-toggle" id="menuBtn" type="button" aria-label="Toggle sidebar" aria-expanded="true"><i data-lucide="menu"></i></button>
   <div class="top-title">
     <h1 id="topTitle">{title}</h1>
     <p>Central command for your organization's assets</p>

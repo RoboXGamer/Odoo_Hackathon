@@ -948,13 +948,14 @@ const menuBtn = document.getElementById("menuBtn");
 const sidebarStorageKey = "assetflow:sidebar-collapsed";
 const isMobileNav = () => window.matchMedia("(max-width: 780px)").matches;
 const setDesktopSidebarState = (collapsed) => {
+  document.documentElement.classList.toggle("sidebar-collapsed", collapsed);
   appShell?.classList.toggle("sidebar-collapsed", collapsed);
   menuBtn?.setAttribute("aria-expanded", String(!collapsed));
 };
 const closeMobileSidebar = () => {
   sidebar?.classList.remove("open");
   overlay?.classList.remove("show");
-  menuBtn?.setAttribute("aria-expanded", "false");
+  if (isMobileNav()) menuBtn?.setAttribute("aria-expanded", "false");
 };
 if (!isMobileNav()) {
   setDesktopSidebarState(localStorage.getItem(sidebarStorageKey) === "true");
