@@ -402,7 +402,12 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
   await assertReferences(resource, values as Record<string, any>);
   if (resource === 'bookings' && ((values as any).date || (values as any).start || (values as any).end || (values as any).resource)) {
     const current = await getResourceItem('bookings', id) as Record<string, any>;
-    const candidate = { ...current, ...values };
+    const candidate = { ...current, ...(values as Record<string, any>) } as {
+      resource: string;
+      date: string;
+      start: string;
+      end: string;
+    };
     const existing = await db.select().from(tables.bookings);
     if (existing.some((booking) => booking.id !== id && booking.status !== 'Cancelled' && booking.resource === candidate.resource && booking.date === candidate.date && candidate.start < booking.end && candidate.end > booking.start)) throw new Error('This slot overlaps with an existing booking. Choose another time.');
   }
