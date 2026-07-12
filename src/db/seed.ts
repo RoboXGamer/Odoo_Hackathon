@@ -15,11 +15,11 @@ export const seedData = {
     { id: 'CAT-5', name: 'Equipment', count: 8, status: 'Active' },
   ],
   employees: [
-    { id: 'EMP-1', name: 'Priya Shah', department: 'Engineering', email: 'priya@assetflow.local', status: 'Active' },
-    { id: 'EMP-2', name: 'Arjun Nair', department: 'Design', email: 'arjun@assetflow.local', status: 'Active' },
-    { id: 'EMP-3', name: 'Rohan Mehta', department: 'Facilities', email: 'rohan@assetflow.local', status: 'Active' },
-    { id: 'EMP-4', name: 'R. Varma', department: 'Operations', email: 'r.varma@assetflow.local', status: 'Active' },
-    { id: 'EMP-5', name: 'S. Kapoor', department: 'Facilities', email: 's.kapoor@assetflow.local', status: 'Active' },
+    { id: 'EMP-1', name: 'Priya Shah', department: 'Engineering', email: 'priya@assetflow.local', userId: null, role: 'employee', status: 'Active' },
+    { id: 'EMP-2', name: 'Arjun Nair', department: 'Design', email: 'arjun@assetflow.local', userId: null, role: 'department_head', status: 'Active' },
+    { id: 'EMP-3', name: 'Rohan Mehta', department: 'Facilities', email: 'rohan@assetflow.local', userId: null, role: 'asset_manager', status: 'Active' },
+    { id: 'EMP-4', name: 'R. Varma', department: 'Operations', email: 'r.varma@assetflow.local', userId: null, role: 'employee', status: 'Active' },
+    { id: 'EMP-5', name: 'S. Kapoor', department: 'Facilities', email: 's.kapoor@assetflow.local', userId: null, role: 'employee', status: 'Active' },
   ],
   assets: [
     { id: 'AF-0012', name: 'Dell Latitude', category: 'Electronics', status: 'Allocated', department: 'Engineering', location: 'Bengaluru', owner: 'Priya Shah', updated: '2h ago' },

@@ -1,22 +1,24 @@
 ---
-const { userName = 'User', userRole = 'Member', userEmail = '', activePath = '/' } = Astro.props;
+const { userName = 'User', userRole = 'Member', role = 'employee', userEmail = '', activePath = '/' } = Astro.props;
 const initials = String(userName)
   .split(' ')
   .map((part) => part[0])
   .join('')
   .slice(0, 2)
   .toUpperCase();
-const links = [
-  ['/', 'Dashboard', 'layout-dashboard'],
-  ['/organization', 'Organization', 'building-2'],
-  ['/assets', 'Assets', 'boxes'],
-  ['/allocation', 'Allocation', 'arrow-left-right'],
-  ['/booking', 'Booking', 'calendar-days'],
-  ['/maintenance', 'Maintenance', 'wrench'],
-  ['/audit', 'Audit', 'clipboard-check'],
-  ['/reports', 'Reports', 'chart-column'],
-  ['/notifications', 'Notifications', 'bell'],
+type NavigationLink = [href: string, label: string, icon: string, roles: string[]];
+const allLinks: NavigationLink[] = [
+  ['/', 'Dashboard', 'layout-dashboard', ['admin', 'asset_manager', 'department_head', 'employee']],
+  ['/organization', 'Organization', 'building-2', ['admin']],
+  ['/assets', 'Assets', 'boxes', ['admin', 'asset_manager', 'department_head', 'employee']],
+  ['/allocation', 'Allocation', 'arrow-left-right', ['admin', 'asset_manager', 'department_head', 'employee']],
+  ['/booking', 'Booking', 'calendar-days', ['admin', 'asset_manager', 'department_head', 'employee']],
+  ['/maintenance', 'Maintenance', 'wrench', ['admin', 'asset_manager', 'department_head', 'employee']],
+  ['/audit', 'Audit', 'clipboard-check', ['admin', 'asset_manager', 'department_head']],
+  ['/reports', 'Reports', 'chart-column', ['admin', 'asset_manager', 'department_head']],
+  ['/notifications', 'Notifications', 'bell', ['admin', 'asset_manager', 'department_head', 'employee']],
 ];
+const links = allLinks.filter(([, , , roles]) => roles.includes(role));
 ---
 
 <div class="brand">

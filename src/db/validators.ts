@@ -3,14 +3,21 @@ import { z } from 'zod';
 const requiredText = z.string().trim().min(1);
 const status = <T extends [string, ...string[]]>(values: T) => z.enum(values);
 const blankAsDash = z.string().trim().transform((value) => value || '-');
-const normalizedDepartment = z.string().trim().transform((value) => ['-', '—', 'â€”'].includes(value) ? 'Unassigned' : value).pipe(requiredText);
+const normalizedDepartment = z.string().trim().transform((value) => ['-', '—'].includes(value) ? 'Unassigned' : value).pipe(requiredText);
 const timeText = z.string().trim().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'Expected time in HH:mm format');
 
 export const assetSchema = z.object({
-  id: requiredText,
+  id: requiredText.optional(),
   name: requiredText,
+  serialNumber: z.string().trim().default(''),
+  qrCode: z.string().trim().default(''),
   category: requiredText,
-  status: status(['Available', 'Allocated', 'Maintenance', 'Retired']),
+  status: status(['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed']).default('Available'),
+  condition: status(['New', 'Good', 'Fair', 'Damaged']).default('Good'),
+  acquisitionDate: z.string().trim().default(''),
+  acquisitionCost: z.coerce.number().nonnegative().default(0),
+  shared: z.coerce.boolean().default(false),
+  attachments: z.string().trim().default(''),
   department: normalizedDepartment,
   location: requiredText,
   owner: blankAsDash.default('-'),
@@ -38,6 +45,8 @@ export const employeeSchema = z.object({
   name: requiredText,
   department: normalizedDepartment,
   email: z.email(),
+  userId: z.string().trim().nullable().optional(),
+  role: status(['admin', 'asset_manager', 'department_head', 'employee']).default('employee'),
   status: status(['Active', 'Inactive']),
 });
 
@@ -45,7 +54,10 @@ export const maintenanceSchema = z.object({
   id: requiredText,
   asset: requiredText,
   title: requiredText,
-  status: status(['Pending', 'Approved', 'Technician assigned', 'In progress', 'Resolved']),
+  priority: status(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
+  requester: z.string().trim().default(''),
+  photo: z.string().trim().default(''),
+  status: status(['Pending', 'Approved', 'Rejected', 'Technician assigned', 'In progress', 'Resolved']).default('Pending'),
   assignee: z.string().trim().default('Unassigned'),
   date: z.string().trim().default('Just now'),
 });
@@ -57,6 +69,11 @@ export const bookingSchema = z.object({
   date: z.iso.date(),
   start: timeText,
   end: timeText,
+  status: status(['Upcoming', 'Ongoing', 'Completed', 'Cancelled']).default('Upcoming'),
+  requester: z.string().trim().default(''),
+  department: z.string().trim().default(''),
+  reminderAt: z.string().trim().default(''),
+  cancelledAt: z.string().trim().default(''),
 }).refine((value) => value.end > value.start, {
   message: 'End time must be after start time.',
   path: ['end'],
@@ -75,7 +92,20 @@ export const auditSchema = z.object({
   location: requiredText,
   status: status(['Verified', 'Missing', 'Damaged']),
   note: z.string().trim().default(''),
+  cycleId: requiredText.default('AUDIT-Q3'),
 });
+
+export const auditCycleSchema = z.object({
+  id: requiredText,
+  name: requiredText,
+  department: z.string().trim().default(''),
+  location: z.string().trim().default(''),
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  auditors: requiredText,
+  status: status(['Open', 'Closed']).default('Open'),
+  closedAt: z.string().trim().default(''),
+}).refine((value) => value.endDate >= value.startDate, { message: 'End date must not be before start date', path: ['endDate'] });
 
 export const transferSchema = z.object({
   id: requiredText,
@@ -83,6 +113,21 @@ export const transferSchema = z.object({
   to: requiredText,
   reason: requiredText,
   status: status(['Pending', 'Approved', 'Rejected', 'Completed']).default('Pending'),
+  requestedAt: z.string().trim().default(() => new Date().toISOString()),
+  decidedAt: z.string().trim().default(''),
+});
+
+export const allocationSchema = z.object({
+  id: requiredText,
+  asset: requiredText,
+  holderType: status(['Employee', 'Department']),
+  holder: requiredText,
+  allocatedAt: z.string().trim().default(() => new Date().toISOString()),
+  expectedReturn: z.string().trim().default(''),
+  returnedAt: z.string().trim().default(''),
+  status: status(['Active', 'Return Requested', 'Returned']).default('Active'),
+  checkInCondition: z.string().trim().default(''),
+  checkInNotes: z.string().trim().default(''),
 });
 
 export const logSchema = z.object({
@@ -103,7 +148,9 @@ export const resourceSchemas = {
   maintenance: maintenanceSchema,
   bookings: bookingSchema,
   audits: auditSchema,
+  auditCycles: auditCycleSchema,
   transfers: transferSchema,
+  allocations: allocationSchema,
   logs: logSchema,
 } as const;
 

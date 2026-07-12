@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar.astro';
 import Topbar from '../components/Topbar.astro';
 import Modal from '../components/Modal.astro';
 import Drawer from '../components/Drawer.astro';
-import GlobalSearch from '../components/GlobalSearch.astro';
 import NotificationsPopover from '../components/NotificationsPopover.astro';
 import Toast from '../components/Toast.astro';
 import { auth } from '../lib/auth';
@@ -15,15 +14,26 @@ const session = await auth.api.getSession({
 });
 const userName = session?.user?.name ?? session?.user?.email ?? 'User';
 const userEmail = session?.user?.email ?? '';
-const userRole = session?.user?.role === 'viewer' ? 'Viewer' : session?.user?.role === 'manager' ? 'Manager' : 'Administrator';
+const role = String(session?.user?.role ?? 'employee');
+const roleLabels: Record<string, string> = {
+  admin: 'Administrator',
+  asset_manager: 'Asset Manager',
+  department_head: 'Department Head',
+  employee: 'Employee',
+};
+const userRole = roleLabels[role] ?? 'Employee';
 const activePath = Astro.url.pathname;
+
+if (activePath === '/organization' && role !== 'admin') {
+  return Astro.redirect('/');
+}
 ---
 
 <Layout>
-  <div class="app">
+  <div class="app" data-user-role={role}>
     <div class="mobile-overlay" id="overlay"></div>
     <aside class="sidebar" id="sidebar">
-      <Sidebar userName={userName} userRole={userRole} userEmail={userEmail} activePath={activePath} />
+      <Sidebar userName={userName} userRole={userRole} role={role} userEmail={userEmail} activePath={activePath} />
     </aside>
     <main class="main">
       <header class="topbar">
@@ -36,7 +46,6 @@ const activePath = Astro.url.pathname;
   </div>
   <Modal />
   <Drawer />
-  <GlobalSearch />
   <NotificationsPopover />
   <Toast />
   <script src="../scripts/app.js"></script>

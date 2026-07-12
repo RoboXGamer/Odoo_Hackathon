@@ -20,7 +20,9 @@ const emptyState = {
   bookingResources: [],
   bookings: [],
   audits: [],
+  auditCycles: [],
   transfers: [],
+  allocations: [],
   logs: [],
 };
 let db = clone(emptyState),
@@ -103,7 +105,7 @@ function renderAssets() {
   if (!body) return;
   let rows = db.assets.filter(
     (a) =>
-      (a.name + a.id + a.location)
+      (a.name + a.id + a.location + (a.serialNumber || "") + (a.qrCode || ""))
         .toLowerCase()
         .includes(assetFilters.q.toLowerCase()) &&
       (assetFilters.category === "All categories" ||
@@ -163,12 +165,12 @@ function renderOrg() {
       .join("");
   } else {
     head.innerHTML =
-      "<tr><th>Employee</th><th>Department</th><th>Email</th><th>Status</th><th></th></tr>";
+      "<tr><th>Employee</th><th>Department</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>";
     body.innerHTML = db.employees
       .filter((x) => x.name.toLowerCase().includes(search))
       .map(
         (x) =>
-          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.department)}</td><td>${esc(x.email)}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="editOrg('Employee','${x.id}')">Edit</button></td></tr>`,
+          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.department)}</td><td>${esc(x.email)}</td><td>${esc((x.role || "employee").replaceAll("_", " "))}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="editOrg('Employee','${x.id}')">Edit</button></td></tr>`,
       )
       .join("");
   }
@@ -186,7 +188,7 @@ function renderKanban() {
   k.innerHTML = cols
     .map((s, i) => {
       const cards = db.maintenance.filter((x) => x.status === s);
-      return `<div class="column" data-status="${s}"><div class="column-head"><span>${s}</span><span class="count">${cards.length}</span></div>${cards.map((t) => `<div class="ticket" draggable="true" data-id="${t.id}"><div class="ticket-id">${t.id} · ${t.asset}</div><b>${esc(t.title)}</b><small>${esc(t.assignee)} · ${esc(t.date)}</small><div class="ticket-actions"><button onclick="event.stopPropagation();editMaintenance('${t.id}')">Edit</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i - 1})" ${i === 0 ? "disabled" : ""}>←</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i + 1})" ${i === 4 ? "disabled" : ""}>→</button></div></div>`).join("")}<div class="drop-hint">Drag cards here</div></div>`;
+      return `<div class="column" data-status="${s}"><div class="column-head"><span>${s}</span><span class="count">${cards.length}</span></div>${cards.map((t) => `<div class="ticket" draggable="true" data-id="${t.id}"><div class="ticket-id">${t.id} · ${t.asset} · ${esc(t.priority || "Medium")}</div><b>${esc(t.title)}</b><small>${esc(t.requester || "Employee")} · ${esc(t.assignee)} · ${esc(t.date)}</small><div class="ticket-actions approval-action"><button onclick="event.stopPropagation();editMaintenance('${t.id}')">Edit</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i - 1})" ${i === 0 ? "disabled" : ""}>←</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i + 1})" ${i === 4 ? "disabled" : ""}>→</button></div></div>`).join("")}<div class="drop-hint">Drag cards here</div></div>`;
     })
     .join("");
   k.querySelectorAll(".ticket").forEach((c) => {
@@ -241,7 +243,7 @@ function renderBookings() {
     document.getElementById("bookingResource")?.value || resources[0] || "";
   const day = document.getElementById("bookingDay")?.value || new Date().toISOString().slice(0, 10);
   const arr = db.bookings.filter(
-    (b) => b.resource === resource && b.date === day,
+    (b) => b.resource === resource && b.date === day && b.status !== "Cancelled",
   );
   tl.innerHTML = arr
     .map((b) => {
@@ -249,7 +251,7 @@ function renderBookings() {
         [eh, em] = b.end.split(":").map(Number),
         top = ((sh - 9) * 60 + sm) * 0.9,
         height = Math.max(36, ((eh - sh) * 60 + em - sm) * 0.9);
-      return `<div class="booking" style="top:${top}px;height:${height}px"><strong>${esc(b.title)}</strong><small>${b.start}–${b.end}</small><button class="action-btn" style="position:absolute;right:5px;top:4px" onclick="deleteBooking('${b.id}')">×</button></div>`;
+      return `<div class="booking" style="top:${top}px;height:${height}px"><strong>${esc(b.title)}</strong><small>${b.start}–${b.end} · ${esc(b.status || "Upcoming")}</small><button class="action-btn" style="position:absolute;right:30px;top:4px" onclick="rescheduleBooking('${b.id}')">Edit</button><button class="action-btn" style="position:absolute;right:5px;top:4px" onclick="deleteBooking('${b.id}')">×</button></div>`;
     })
     .join("");
   const toolbar = document.querySelector(
@@ -289,10 +291,13 @@ function renderAllocation() {
   }
   const history = document.getElementById("allocationHistory");
   if (history) {
+    const records = (db.allocations || []).filter((x) => x.asset === selectedAsset?.id);
     history.innerHTML = selectedAsset
-      ? `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`
+      ? (records.map((x) => `<div class="history-row"><span class="history-line"></span><div><b>${esc(x.holderType)}: ${esc(x.holder)} ${x.overdue ? '<span class="badge red">Overdue</span>' : ""}</b><small>${esc(x.allocatedAt)}${x.expectedReturn ? ` · Expected ${esc(x.expectedReturn)}` : ""} · ${esc(x.status)}</small>${x.status === "Active" ? `<button class="action-btn" onclick="requestReturn('${x.id}')">Request return</button>` : x.status === "Return Requested" ? `<button class="action-btn approval-action" onclick="completeReturn('${x.id}')">Approve check-in</button>` : ""}</div></div>`).join("") || `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`)
       : '<div class="empty"><b>No asset selected</b>Choose an asset to view custody.</div>';
   }
+  const requests = document.getElementById("transferRequests");
+  if (requests) requests.innerHTML = (db.transfers || []).length ? db.transfers.map((x) => `<div class="list-row"><span><b>${esc(x.asset)} → ${esc(x.to)}</b><small style="display:block;color:var(--muted)">${esc(x.reason)}</small></span><span>${badge(x.status)} ${x.status === "Pending" ? `<button class="action-btn approval-action" onclick="decideTransfer('${x.id}','Approved')">Approve</button><button class="action-btn danger-text approval-action" onclick="decideTransfer('${x.id}','Rejected')">Reject</button>` : ""}</span></div>`).join("") : '<div class="empty"><b>No transfer requests</b></div>';
 }
 function renderAudit() {
   const body = document.querySelector('[data-title="Asset audit"] tbody');
@@ -311,6 +316,11 @@ function renderAudit() {
     mins[1].textContent = vals;
     mins[2].textContent = flag;
   }
+  const cycle = db.auditCycles?.[0];
+  const heading = document.querySelector('[data-title="Asset audit"] h2');
+  const copy = document.querySelector('[data-title="Asset audit"] .page-head p');
+  if (heading && cycle) heading.textContent = cycle.name;
+  if (copy && cycle) copy.textContent = `${cycle.startDate} to ${cycle.endDate} · Auditors: ${cycle.auditors} · ${cycle.status}`;
 }
 function renderLogs() {
   const outputs = [
@@ -354,12 +364,15 @@ function renderDashboard() {
     '[data-title="Dashboard"] .stat strong',
   );
   if (nums.length) {
-    nums[0].textContent = db.assets.length;
     const allocated = db.assets.filter((x) => x.status === "Allocated").length;
     const available = db.assets.filter((x) => x.status === "Available").length;
+    const today = new Date().toISOString().slice(0, 10);
+    nums[0].textContent = available;
     nums[1].textContent = allocated;
-    nums[2].textContent = available;
-    nums[3].textContent = db.bookings.length;
+    nums[2].textContent = db.maintenance.filter((x) => x.date === "Today" || x.date?.startsWith(today)).length;
+    nums[3].textContent = db.bookings.filter((x) => x.status !== "Cancelled" && x.date >= today).length;
+    if (nums[4]) nums[4].textContent = db.transfers.filter((x) => x.status === "Pending").length;
+    if (nums[5]) nums[5].textContent = (db.allocations || []).filter((x) => x.status !== "Returned" && x.expectedReturn >= today).length;
     const percent = db.assets.length ? Math.round((allocated / db.assets.length) * 100) : 0;
     const utilization = document.getElementById("utilizationPercent");
     if (utilization) utilization.textContent = `${percent}%`;
@@ -380,6 +393,12 @@ function renderDashboard() {
       .map(([label, count, color]) => `<div class="legend-row" style="--c:${color}"><span>${label}</span><b>${count}</b></div>`)
       .join("");
   }
+  const activeReturns = (db.allocations || []).filter((x) => x.status !== "Returned" && x.expectedReturn);
+  const today = new Date().toISOString().slice(0, 10);
+  const renderReturns = (items) => items.length ? items.map((x) => `<div class="list-row"><span>${esc(x.asset)} · ${esc(x.holder)}</span><b>${esc(x.expectedReturn)}</b></div>`).join("") : '<div class="empty"><b>None</b></div>';
+  const overdue = document.getElementById("overdueReturns"), upcoming = document.getElementById("upcomingReturns");
+  if (overdue) overdue.innerHTML = renderReturns(activeReturns.filter((x) => x.expectedReturn < today));
+  if (upcoming) upcoming.innerHTML = renderReturns(activeReturns.filter((x) => x.expectedReturn >= today));
 }
 function renderReports() {
   const used = document.getElementById("mostUsedAssets");
@@ -413,6 +432,16 @@ function renderReports() {
           .join("")
       : '<div class="empty"><b>No assets</b>Status counts will appear here.</div>';
   }
+  const heatmap = document.getElementById("bookingHeatmap");
+  if (heatmap) {
+    const hours = db.bookings.filter((x) => x.status !== "Cancelled").reduce((acc, x) => { const hour = `${String(Number(x.start.split(":")[0])).padStart(2, "0")}:00`; acc[hour] = (acc[hour] || 0) + 1; return acc; }, {});
+    heatmap.innerHTML = Object.entries(hours).sort().map(([hour, total]) => `<div class="list-row"><span>${hour}</span><b>${total} booking${total === 1 ? "" : "s"}</b></div>`).join("") || '<div class="empty"><b>No booking usage</b></div>';
+  }
+  const frequency = document.getElementById("maintenanceFrequency");
+  if (frequency) {
+    const counts = db.maintenance.reduce((acc, x) => { acc[x.asset] = (acc[x.asset] || 0) + 1; return acc; }, {});
+    frequency.innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([asset, total]) => `<div class="list-row"><span>${esc(asset)}</span><b>${total}</b></div>`).join("") || '<div class="empty"><b>No maintenance history</b></div>';
+  }
 }
 function bindControls() {
   const ap = document.querySelector('[data-title="Asset directory"]');
@@ -427,7 +456,7 @@ function bindControls() {
       "<option>All categories</option>" +
       db.categories.map((x) => `<option>${esc(x.name)}</option>`).join("");
     st.innerHTML =
-      "<option>All statuses</option><option>Available</option><option>Allocated</option><option>Maintenance</option><option>Retired</option>";
+      "<option>All statuses</option><option>Available</option><option>Allocated</option><option>Reserved</option><option>Under Maintenance</option><option>Lost</option><option>Retired</option><option>Disposed</option>";
     dep.innerHTML =
       "<option>All departments</option>" +
       db.departments
@@ -485,7 +514,8 @@ function optionList(items, selected = "") {
 function assetForm(item = {}) {
   const categories = db.categories.map((x) => x.name);
   const departments = db.departments.map((x) => x.name);
-  return `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Asset tag *</label><input name="id" required placeholder="AF-0000" value="${esc(item.id || "")}"></div><div class="field"><label>Category</label><select name="category" required>${optionList(categories, item.category)}</select></div><div class="field"><label>Status</label><select name="status"><option ${item.status === "Available" ? "selected" : ""}>Available</option><option ${item.status === "Allocated" ? "selected" : ""}>Allocated</option><option ${item.status === "Maintenance" ? "selected" : ""}>Maintenance</option><option ${item.status === "Retired" ? "selected" : ""}>Retired</option></select></div><div class="field"><label>Department</label><select name="department" required>${optionList(departments, item.department)}</select></div><div class="field"><label>Location *</label><input name="location" required value="${esc(item.location || "")}"></div><div class="field full"><label>Assigned owner</label><input name="owner" placeholder="Optional" value="${esc(item.owner || "")}"></div></div>`;
+  const statuses = ["Available", "Allocated", "Reserved", "Under Maintenance", "Lost", "Retired", "Disposed"];
+  return `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Asset tag</label><input name="id" placeholder="Generated automatically" value="${esc(item.id || "")}" ${item.id ? "readonly" : ""}></div><div class="field"><label>Serial number</label><input name="serialNumber" value="${esc(item.serialNumber || "")}"></div><div class="field"><label>QR identifier</label><input name="qrCode" placeholder="Defaults to asset tag" value="${esc(item.qrCode || "")}"></div><div class="field"><label>Category</label><select name="category" required>${optionList(categories, item.category)}</select></div><div class="field"><label>Status</label><select name="status">${optionList(statuses, item.status || "Available")}</select></div><div class="field"><label>Condition</label><select name="condition">${optionList(["New", "Good", "Fair", "Damaged"], item.condition || "Good")}</select></div><div class="field"><label>Acquisition date</label><input type="date" name="acquisitionDate" value="${esc(item.acquisitionDate || "")}"></div><div class="field"><label>Acquisition cost</label><input type="number" min="0" step="0.01" name="acquisitionCost" value="${esc(item.acquisitionCost || 0)}"></div><div class="field"><label>Department</label><select name="department" required>${optionList(departments, item.department || "Unassigned")}</select></div><div class="field"><label>Location *</label><input name="location" required value="${esc(item.location || "")}"></div><div class="field"><label>Shared/bookable</label><select name="shared"><option value="false">No</option><option value="true" ${item.shared ? "selected" : ""}>Yes</option></select></div><div class="field full"><label>Attachment references</label><input name="attachments" placeholder="Photo or document URLs" value="${esc(item.attachments || "")}"></div><input type="hidden" name="owner" value="${esc(item.owner || "-")}"></div>`;
 }function setModal(title, html, action, wide = false) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = html;
@@ -500,12 +530,11 @@ function openModal(title) {
       title,
       assetForm(),
       async (fd) => {
-        if (db.assets.some((x) => x.id === fd.id))
+        if (fd.id && db.assets.some((x) => x.id === fd.id))
           throw Error("That asset tag already exists.");
-        const item = { ...fd, updated: "Just now" };
+        const item = await apiCreate("assets", { ...fd, id: fd.id || undefined, updated: "Just now" });
         db.assets.push(item);
-        await apiCreate("assets", item);
-        await apiCreate("logs", addLog("Allocation", `Asset ${fd.id} registered`, fd.name));
+        await apiCreate("logs", addLog("Allocation", `Asset ${item.id} registered`, fd.name));
       },
       true,
     );
@@ -513,6 +542,17 @@ function openModal(title) {
   if (title === "Add category") return editOrg("Category");
   if (title === "Add employee") return editOrg("Employee");
   if (title === "Book a resource") return bookingModal();
+  if (title === "Create audit cycle") return setModal(title, `<div class="form-grid"><div class="field full"><label>Cycle name</label><input name="name" required></div><div class="field"><label>Department scope</label><select name="department"><option value="">All departments</option>${optionList(db.departments.map((x) => x.name))}</select></div><div class="field"><label>Location scope</label><input name="location"></div><div class="field"><label>Start date</label><input type="date" name="startDate" required></div><div class="field"><label>End date</label><input type="date" name="endDate" required></div><div class="field full"><label>Auditors</label><input name="auditors" required placeholder="Comma-separated employee names"></div></div>`, async (fd) => { const cycle = await apiCreate("auditCycles", { id: uid("AUDIT"), ...fd, status: "Open", closedAt: "" }); db.auditCycles.unshift(cycle); await apiCreate("logs", addLog("Approval", `Audit cycle created: ${fd.name}`, fd.auditors)); }, true);
+  if (title === "Allocate asset") {
+    const available = db.assets.filter((x) => x.status === "Available" && !x.shared);
+    return setModal(title, `<div class="form-grid"><div class="field full"><label>Available asset</label><select name="asset" required>${available.map((x) => `<option value="${esc(x.id)}">${esc(x.id)} - ${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>Holder type</label><select name="holderType"><option>Employee</option><option>Department</option></select></div><div class="field"><label>Holder</label><input name="holder" required list="allocationHolders"><datalist id="allocationHolders">${[...db.employees.map((x) => x.name), ...db.departments.map((x) => x.name)].map((x) => `<option value="${esc(x)}">`).join("")}</datalist></div><div class="field full"><label>Expected return</label><input type="date" name="expectedReturn"></div></div>`, async (fd) => {
+      const item = await apiCreate("allocations", { id: uid("AL"), ...fd, allocatedAt: new Date().toISOString(), status: "Active" });
+      db.allocations.push(item);
+      const asset = db.assets.find((x) => x.id === fd.asset);
+      if (asset) Object.assign(asset, { status: "Allocated", owner: fd.holderType === "Employee" ? fd.holder : "-", department: fd.holderType === "Department" ? fd.holder : asset.department });
+      await apiCreate("logs", addLog("Allocation", `${fd.asset} allocated`, `${fd.holderType}: ${fd.holder}`));
+    }, true);
+  }
   if (title === "Maintenance request" || title === "Raise requests")
     return maintenanceModal();
   setModal(
@@ -562,11 +602,11 @@ function editOrg(type, id) {
     item = db[key].find((x) => x.id === id) || {};
   let html;
   if (type === "Department")
-    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Head</label><input name="head" value="${esc(item.head || "")}"></div><div class="field"><label>Parent</label><input name="parent" value="${esc(item.parent || "—")}"></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
+    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Head</label><select name="head"><option value="-">Unassigned</option>${optionList(db.employees.map((x) => x.name), item.head)}</select></div><div class="field"><label>Parent</label><select name="parent"><option value="-">No parent</option>${optionList(db.departments.filter((x) => x.id !== id).map((x) => x.name), item.parent)}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   else if (type === "Category")
     html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   else
-    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Email *</label><input name="email" type="email" required value="${esc(item.email || "")}"></div><div class="field"><label>Department</label><select name="department">${db.departments.map((x) => `<option ${x.name === item.department ? "selected" : ""}>${x.name}</option>`).join("")}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
+    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Email *</label><input name="email" type="email" required value="${esc(item.email || "")}"></div><div class="field"><label>Department</label><select name="department">${db.departments.map((x) => `<option ${x.name === item.department ? "selected" : ""}>${x.name}</option>`).join("")}</select></div><div class="field"><label>Role</label><select name="role">${optionList(["employee", "department_head", "asset_manager", "admin"], item.role || "employee")}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   setModal(`${id ? "Edit" : "Add"} ${type}`, html, async (fd) => {
     if (id) {
       Object.assign(item, fd);
@@ -608,7 +648,7 @@ function openAsset(id) {
   const a = db.assets.find((x) => x.id === id);
   if (!a) return;
   document.getElementById("drawerBody").innerHTML =
-    `<div class="detail-hero"><span class="detail-icon">▣</span><div><h2 style="margin:0 0 5px">${esc(a.name)}</h2>${badge(a.status)}</div></div><div class="detail-grid"><div class="detail-item"><small>Asset tag</small><b>${a.id}</b></div><div class="detail-item"><small>Category</small><b>${esc(a.category)}</b></div><div class="detail-item"><small>Department</small><b>${esc(a.department)}</b></div><div class="detail-item"><small>Location</small><b>${esc(a.location)}</b></div><div class="detail-item"><small>Assigned owner</small><b>${esc(a.owner)}</b></div><div class="detail-item"><small>Last updated</small><b>${esc(a.updated)}</b></div></div><div style="display:flex;gap:8px;margin-top:20px"><button class="btn primary" onclick="editAsset('${id}')">Edit asset</button><button class="btn danger" onclick="deleteAsset('${id}')">Delete</button></div>`;
+    `<div class="detail-hero"><span class="detail-icon">▣</span><div><h2 style="margin:0 0 5px">${esc(a.name)}</h2>${badge(a.status)}</div></div><div class="detail-grid"><div class="detail-item"><small>Asset tag</small><b>${a.id}</b></div><div class="detail-item"><small>Serial / QR</small><b>${esc(a.serialNumber || "-")} / ${esc(a.qrCode || a.id)}</b></div><div class="detail-item"><small>Category</small><b>${esc(a.category)}</b></div><div class="detail-item"><small>Condition</small><b>${esc(a.condition || "Good")}</b></div><div class="detail-item"><small>Department</small><b>${esc(a.department)}</b></div><div class="detail-item"><small>Location</small><b>${esc(a.location)}</b></div><div class="detail-item"><small>Assigned owner</small><b>${esc(a.owner)}</b></div><div class="detail-item"><small>Acquisition</small><b>${esc(a.acquisitionDate || "-")} · ${esc(a.acquisitionCost || 0)}</b></div></div><div style="display:flex;gap:8px;margin-top:20px"><button class="btn primary manager-action" onclick="editAsset('${id}')">Edit asset</button><button class="btn danger manager-action" onclick="deleteAsset('${id}')">Delete</button></div>`;
   document.getElementById("drawer").classList.add("open");
 }
 function closeDrawer() {
@@ -645,7 +685,7 @@ function maintenanceModal(id) {
   const t = db.maintenance.find((x) => x.id === id) || {};
   setModal(
     id ? "Edit maintenance request" : "New maintenance request",
-    `<div class="form-grid"><div class="field"><label>Asset tag *</label><input name="asset" required value="${esc(t.asset || "")}"></div><div class="field"><label>Status</label><select name="status">${["Pending", "Approved", "Technician assigned", "In progress", "Resolved"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`)}</select></div><div class="field full"><label>Issue *</label><textarea name="title" required>${esc(t.title || "")}</textarea></div><div class="field full"><label>Assignee</label><input name="assignee" value="${esc(t.assignee || "Unassigned")}"></div></div>`,
+    `<div class="form-grid"><div class="field"><label>Asset *</label><select name="asset" required>${optionList(db.assets.map((x) => x.id), t.asset)}</select></div><div class="field"><label>Priority</label><select name="priority">${optionList(["Low", "Medium", "High", "Critical"], t.priority || "Medium")}</select></div><div class="field"><label>Requester</label><input name="requester" value="${esc(t.requester || "")}"></div><div class="field"><label>Status</label><select name="status">${(id ? ["Pending", "Approved", "Rejected", "Technician assigned", "In progress", "Resolved"] : ["Pending"]).map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`)}</select></div><div class="field full"><label>Issue *</label><textarea name="title" required>${esc(t.title || "")}</textarea></div><div class="field"><label>Technician</label><input name="assignee" value="${esc(t.assignee || "Unassigned")}"></div><div class="field"><label>Photo reference</label><input name="photo" value="${esc(t.photo || "")}"></div></div>`,
     async (fd) => {
       if (id) {
         Object.assign(t, fd);
@@ -679,16 +719,21 @@ function moveCard(id, index) {
     .catch((e) => toast(e.message || "Save failed"));
   save();
 }
-function bookingModal() {
+function bookingModal(id) {
+  const current = db.bookings.find((x) => x.id === id) || {};
   const resources = (db.bookingResources?.length ? db.bookingResources.map((x) => x.name) : [...new Set(db.bookings.map((x) => x.resource))]);
+  const today = new Date().toISOString().slice(0, 10);
   setModal(
-    "Book a resource",
-    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required></div><div class="field"><label>Date</label><input type="date" name="date" required value="${new Date().toISOString().slice(0, 10)}"></div><div></div><div class="field"><label>Start</label><input type="time" name="start" required value="10:00"></div><div class="field"><label>End</label><input type="time" name="end" required value="11:00"></div></div>`,
+    id ? "Reschedule booking" : "Book a resource",
+    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources, current.resource)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required value="${esc(current.title || "")}"></div><div class="field"><label>Requester</label><input name="requester" value="${esc(current.requester || "")}"></div><div class="field"><label>Department</label><input name="department" value="${esc(current.department || "")}"></div><div class="field"><label>Date</label><input type="date" name="date" min="${today}" required value="${current.date || today}"></div><div class="field"><label>Reminder</label><input type="datetime-local" name="reminderAt" value="${esc(current.reminderAt || "")}"></div><div class="field"><label>Start</label><input type="time" name="start" required value="${current.start || "10:00"}"></div><div class="field"><label>End</label><input type="time" name="end" required value="${current.end || "11:00"}"></div></div>`,
     async (fd) => {
       if (fd.end <= fd.start) throw Error("End time must be after start time.");
+      const startAt = new Date(`${fd.date}T${fd.start}:00`);
+      if (startAt <= new Date()) throw Error("Bookings must start in the future. Choose a later time slot.");
       if (
         db.bookings.some(
           (b) =>
+            b.id !== id &&
             b.resource === fd.resource &&
             b.date === fd.date &&
             fd.start < b.end &&
@@ -698,9 +743,9 @@ function bookingModal() {
         throw Error(
           "This slot overlaps with an existing booking. Choose another time.",
         );
-      const item = { id: uid("BK"), ...fd };
-      db.bookings.push(item);
-      await apiCreate("bookings", item);
+      const item = { id: id || uid("BK"), ...fd, status: "Upcoming", cancelledAt: "" };
+      if (id) { Object.assign(current, item); await apiPatch("bookings", id, fd); }
+      else { db.bookings.push(item); await apiCreate("bookings", item); }
       await apiCreate("logs", addLog(
         "Booking",
         `Booking confirmed: ${fd.resource}`,
@@ -712,18 +757,23 @@ function bookingModal() {
 }
 function deleteBooking(id) {
   if (confirm("Cancel this booking?")) {
-    db.bookings = db.bookings.filter((x) => x.id !== id);
-    apiDelete("bookings", id)
+    const booking = db.bookings.find((x) => x.id === id);
+    apiPatch("bookings", id, { status: "Cancelled", cancelledAt: new Date().toISOString() })
       .then(() => apiCreate("logs", addLog("Booking", "Booking cancelled", id)))
       .catch((e) => toast(e.message || "Delete failed"));
+    if (booking) booking.status = "Cancelled";
     save();
   }
 }
+function rescheduleBooking(id) { bookingModal(id); }
 function updateAudit(i, status) {
   db.audits[i].status = status;
   apiPatch("audits", db.audits[i].asset, { status })
     .then(() => apiCreate("logs", addLog("Alert", `${db.audits[i].asset} marked ${status}`, "Q3 audit")))
     .catch((e) => toast(e.message || "Save failed"));
+  const asset = db.assets.find((a) => a.id === x.asset);
+  if (asset && x.status === "Approved") asset.status = "Under Maintenance";
+  if (asset && x.status === "Resolved") asset.status = "Available";
   save();
 }
 function updateAuditNote(i, note) {
@@ -748,6 +798,22 @@ function submitTransfer() {
   save();
   sec.querySelector("textarea").value = "";
   toast("Transfer request submitted");
+}
+function decideTransfer(id, status) {
+  const transfer = db.transfers.find((x) => x.id === id);
+  if (!transfer) return;
+  apiPatch("transfers", id, { status, decidedAt: new Date().toISOString() }).then(() => {
+    transfer.status = status === "Approved" ? "Completed" : status;
+    return apiCreate("logs", addLog("Approval", `Transfer ${transfer.status.toLowerCase()}: ${transfer.asset}`, `To ${transfer.to}`));
+  }).then(save).catch((e) => toast(e.message || "Unable to update transfer"));
+}
+function requestReturn(id) {
+  apiPatch("allocations", id, { status: "Return Requested" }).then(() => { const item = db.allocations.find((x) => x.id === id); if (item) item.status = "Return Requested"; save(); }).catch((e) => toast(e.message));
+}
+function completeReturn(id) {
+  const condition = prompt("Check-in condition: New, Good, Fair, or Damaged", "Good") || "Good";
+  const notes = prompt("Check-in notes", "") || "";
+  apiPatch("allocations", id, { status: "Returned", returnedAt: new Date().toISOString(), checkInCondition: condition, checkInNotes: notes }).then(() => { const item = db.allocations.find((x) => x.id === id); if (item) Object.assign(item, { status: "Returned", checkInCondition: condition, checkInNotes: notes }); const asset = db.assets.find((x) => x.id === item?.asset); if (asset) Object.assign(asset, { status: "Available", owner: "-", condition }); save(); }).catch((e) => toast(e.message));
 }
 function exportCSV(kind) {
   let rows =
@@ -790,13 +856,15 @@ bind('[data-title="Asset audit"] .alert .btn', () => {
   showScreen("notifications");
 });
 bind('[data-title="Asset audit"] .page-head .success', () => {
-  apiCreate("logs", addLog(
-    "Approval",
-    "Q3 audit cycle closed",
-    `${db.audits.filter((x) => x.status !== "Verified").length} discrepancies`,
-  )).catch((e) => toast(e.message || "Save failed"));
-  save();
-  toast("Audit cycle closed");
+  const cycle = db.auditCycles?.find((x) => x.status === "Open");
+  if (!cycle) return toast("No open audit cycle");
+  apiPatch("auditCycles", cycle.id, { status: "Closed", closedAt: new Date().toISOString() })
+    .then(() => {
+      cycle.status = "Closed";
+      return apiCreate("logs", addLog("Approval", `${cycle.name} closed`, `${db.audits.filter((x) => x.status !== "Verified").length} discrepancies`));
+    })
+    .then(() => { save(); toast("Audit cycle closed and locked"); })
+    .catch((e) => toast(e.message || "Unable to close audit"));
 });
 bind('[data-title="Activity & notifications"] .page-head .btn', () => {
   db.logs.forEach((x) => (x.read = true));
@@ -814,40 +882,22 @@ bind("#markNotificationsRead", () => {
   save();
   toast("All notifications marked as read");
 });
-const searchBtn = document.getElementById("searchToggle");
-if (searchBtn)
-  searchBtn.onclick = () => {
-    const searchPopover = document.getElementById("globalSearch");
-    if (!searchPopover?.matches(":popover-open")) searchPopover?.showPopover?.();
-    setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 20);
-  };
-const globalSearchInput = document.getElementById("globalSearchInput");
-if (globalSearchInput) globalSearchInput.oninput = (e) => {
-  const q = e.target.value.toLowerCase(),
-    items = [
-      ...db.assets.map((x) => ({
-        title: `${x.id} · ${x.name}`,
-        sub: `Asset · ${x.location}`,
-        action: `openAsset('${x.id}')`,
-      })),
-      ...db.employees.map((x) => ({
-        title: x.name,
-        sub: `Employee · ${x.department}`,
-        action: `showScreen('organization')`,
-      })),
-    ]
-      .filter((x) => (x.title + x.sub).toLowerCase().includes(q))
-      .slice(0, 7);
-  const globalSearchList = document.getElementById("globalSearchList");
-  if (!globalSearchList) return;
-  globalSearchList.innerHTML =
-    items
-      .map(
-        (x) =>
-          `<div class="result" onclick="${x.action};document.getElementById('globalSearch').hidePopover?.()"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div>`,
-      )
-      .join("") || '<div class="empty">No matching results</div>';
-};
+const notificationsToggle = document.getElementById("notificationsToggle");
+const notificationsPopover = document.getElementById("notificationsPopover");
+function positionNotificationsPopover() {
+  if (!notificationsToggle || !notificationsPopover) return;
+  const trigger = notificationsToggle.getBoundingClientRect();
+  const width = Math.min(440, window.innerWidth - 32);
+  const left = Math.max(16, Math.min(trigger.right - width, window.innerWidth - width - 16));
+  notificationsPopover.style.setProperty("--popover-left", `${left}px`);
+  notificationsPopover.style.setProperty("--popover-top", `${trigger.bottom + 10}px`);
+}
+notificationsPopover?.addEventListener("beforetoggle", (event) => {
+  if (event.newState === "open") positionNotificationsPopover();
+});
+window.addEventListener("resize", () => {
+  if (notificationsPopover?.matches(":popover-open")) positionNotificationsPopover();
+});
 Object.assign(window, {
   showScreen,
   openModal,
@@ -862,8 +912,12 @@ Object.assign(window, {
   editMaintenance,
   moveCard,
   deleteBooking,
+  rescheduleBooking,
   updateAudit,
   updateAuditNote,
+  decideTransfer,
+  requestReturn,
+  completeReturn,
 });
 createIcons({ icons });
 const appShell = document.querySelector(".app");
@@ -918,7 +972,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
     closeDrawer();
-    document.getElementById("globalSearch")?.hidePopover?.();
     document.getElementById("notificationsPopover")?.hidePopover?.();
     closeMobileSidebar();
   }

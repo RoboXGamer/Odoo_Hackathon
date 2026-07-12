@@ -3,7 +3,7 @@ import { auth } from './auth';
 import type { ResourceName } from '../db/validators';
 
 type Action = 'read' | 'create' | 'update' | 'delete';
-type Role = 'admin' | 'manager' | 'viewer';
+type Role = 'admin' | 'asset_manager' | 'department_head' | 'employee';
 
 const managerWritable: ResourceName[] = [
   'assets',
@@ -16,11 +16,16 @@ const managerWritable: ResourceName[] = [
   'audits',
   'transfers',
   'logs',
+  'allocations',
+  'auditCycles',
 ];
 
 function can(role: Role, resource: ResourceName, action: Action) {
   if (role === 'admin') return true;
-  if (role === 'viewer') return action === 'read';
+  if (['departments', 'categories', 'employees'].includes(resource)) return action === 'read';
+  if (role === 'employee') {
+    return action === 'read' || (action === 'create' && ['bookings', 'maintenance', 'transfers'].includes(resource)) || (action === 'update' && resource === 'allocations');
+  }
   if (action === 'read') return true;
   if (action === 'delete') return false;
   return managerWritable.includes(resource);
@@ -35,7 +40,7 @@ export async function authorizeResourceRequest(context: APIContext, resource: Re
     return Response.json({ ok: false, error: 'Authentication required' }, { status: 401 });
   }
 
-  const role = ((session.user as { role?: string }).role ?? 'viewer') as Role;
+  const role = ((session.user as { role?: string }).role ?? 'employee') as Role;
   if (!can(role, resource, action)) {
     return Response.json({ ok: false, error: 'You do not have permission to perform this action' }, { status: 403 });
   }
