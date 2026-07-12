@@ -334,6 +334,25 @@ async function countByName(table: any, column: any, name: string) {
   return value;
 }
 
+function assertBookingIsFuture(date: string, start: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date()).map((part) => [part.type, part.value]),
+  );
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  const currentTime = `${parts.hour}:${parts.minute}`;
+  if (date < today || (date === today && start <= currentTime)) {
+    throw new Error('Bookings must start in the future. Choose a later time slot.');
+  }
+}
+
 async function assertCanDelete(resource: ResourceName, existing: Record<string, any>) {
   if (resource === 'departments') {
     const assetCount = await countByName(tables.assets, tables.assets.department, existing.name);
@@ -380,6 +399,7 @@ export async function createResourceItem(resource: ResourceName, payload: unknow
     if (values.holderType === 'Department' && !(await existsByName(tables.departments, tables.departments.name, values.holder))) throw new Error(`Unknown department: ${values.holder}`);
   }
   if (resource === 'bookings') {
+    assertBookingIsFuture(values.date, values.start);
     const existing = await db.select().from(tables.bookings);
     if (existing.some((booking) => booking.status !== 'Cancelled' && booking.resource === values.resource && booking.date === values.date && values.start < booking.end && values.end > booking.start)) {
       throw new Error('This slot overlaps with an existing booking. Choose another time.');
@@ -408,6 +428,7 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
       start: string;
       end: string;
     };
+    assertBookingIsFuture(candidate.date, candidate.start);
     const existing = await db.select().from(tables.bookings);
     if (existing.some((booking) => booking.id !== id && booking.status !== 'Cancelled' && booking.resource === candidate.resource && booking.date === candidate.date && candidate.start < booking.end && candidate.end > booking.start)) throw new Error('This slot overlaps with an existing booking. Choose another time.');
   }
