@@ -187,7 +187,7 @@ function renderKanban() {
   k.innerHTML = cols
     .map((s, i) => {
       const cards = db.maintenance.filter((x) => x.status === s);
-      return `<div class="column" data-status="${s}"><div class="column-head"><span>${s}</span><span class="count">${cards.length}</span></div>${cards.map((t) => `<div class="ticket" draggable="true" data-id="${t.id}"><div class="ticket-id">${t.id} · ${t.asset}</div><b>${esc(t.title)}</b><small>${esc(t.assignee)} · ${esc(t.date)}</small><div class="ticket-actions"><button onclick="event.stopPropagation();editMaintenance('${t.id}')">Edit</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i - 1})" ${i === 0 ? "disabled" : ""}>←</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i + 1})" ${i === 4 ? "disabled" : ""}>→</button></div></div>`).join("")}<div class="drop-hint">Drag cards here</div></div>`;
+      return `<div class="column" data-status="${s}"><div class="column-head"><span>${s}</span><span class="count">${cards.length}</span></div>${cards.map((t) => `<div class="ticket" draggable="true" data-id="${t.id}"><div class="ticket-id">${t.id} · ${t.asset} · ${esc(t.priority || "Medium")}</div><b>${esc(t.title)}</b><small>${esc(t.requester || "Employee")} · ${esc(t.assignee)} · ${esc(t.date)}</small><div class="ticket-actions approval-action"><button onclick="event.stopPropagation();editMaintenance('${t.id}')">Edit</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i - 1})" ${i === 0 ? "disabled" : ""}>←</button><button onclick="event.stopPropagation();moveCard('${t.id}',${i + 1})" ${i === 4 ? "disabled" : ""}>→</button></div></div>`).join("")}<div class="drop-hint">Drag cards here</div></div>`;
     })
     .join("");
   k.querySelectorAll(".ticket").forEach((c) => {
@@ -665,7 +665,7 @@ function maintenanceModal(id) {
   const t = db.maintenance.find((x) => x.id === id) || {};
   setModal(
     id ? "Edit maintenance request" : "New maintenance request",
-    `<div class="form-grid"><div class="field"><label>Asset tag *</label><input name="asset" required value="${esc(t.asset || "")}"></div><div class="field"><label>Status</label><select name="status">${["Pending", "Approved", "Technician assigned", "In progress", "Resolved"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`)}</select></div><div class="field full"><label>Issue *</label><textarea name="title" required>${esc(t.title || "")}</textarea></div><div class="field full"><label>Assignee</label><input name="assignee" value="${esc(t.assignee || "Unassigned")}"></div></div>`,
+    `<div class="form-grid"><div class="field"><label>Asset *</label><select name="asset" required>${optionList(db.assets.map((x) => x.id), t.asset)}</select></div><div class="field"><label>Priority</label><select name="priority">${optionList(["Low", "Medium", "High", "Critical"], t.priority || "Medium")}</select></div><div class="field"><label>Requester</label><input name="requester" value="${esc(t.requester || "")}"></div><div class="field"><label>Status</label><select name="status">${(id ? ["Pending", "Approved", "Rejected", "Technician assigned", "In progress", "Resolved"] : ["Pending"]).map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`)}</select></div><div class="field full"><label>Issue *</label><textarea name="title" required>${esc(t.title || "")}</textarea></div><div class="field"><label>Technician</label><input name="assignee" value="${esc(t.assignee || "Unassigned")}"></div><div class="field"><label>Photo reference</label><input name="photo" value="${esc(t.photo || "")}"></div></div>`,
     async (fd) => {
       if (id) {
         Object.assign(t, fd);
@@ -748,6 +748,9 @@ function updateAudit(i, status) {
   apiPatch("audits", db.audits[i].asset, { status })
     .then(() => apiCreate("logs", addLog("Alert", `${db.audits[i].asset} marked ${status}`, "Q3 audit")))
     .catch((e) => toast(e.message || "Save failed"));
+  const asset = db.assets.find((a) => a.id === x.asset);
+  if (asset && x.status === "Approved") asset.status = "Under Maintenance";
+  if (asset && x.status === "Resolved") asset.status = "Available";
   save();
 }
 function updateAuditNote(i, note) {
