@@ -475,14 +475,17 @@ function renderAudit() {
   }
 }
 function renderLogs() {
-  const out = document.getElementById("logs");
-  if (!out) return;
+  const outputs = [
+    document.getElementById("logs"),
+    document.getElementById("notificationList"),
+  ].filter(Boolean);
+  if (!outputs.length) return;
   const arr = db.logs.filter(
     (l) =>
       notificationFilter === "All" ||
       l.type === notificationFilter.replace(/s$/, ""),
   );
-  out.innerHTML = arr.length
+  const html = arr.length
     ? arr
         .map(
           (l) =>
@@ -490,10 +493,13 @@ function renderLogs() {
         )
         .join("")
     : '<div class="empty"><b>No notifications</b>Nothing in this category.</div>';
+  outputs.forEach((out) => {
+    out.innerHTML = html;
+  });
   document
-    .querySelectorAll('[data-title="Activity & notifications"] .filters .tab')
+    .querySelectorAll('[data-title="Activity & notifications"] .filters .tab, [data-notification-filter]')
     .forEach((t) =>
-      t.classList.toggle("active", t.textContent.trim() === notificationFilter),
+      t.classList.toggle("active", (t.dataset.notificationFilter || t.textContent.trim()) === notificationFilter),
     );
 }
 function renderDashboard() {
@@ -560,17 +566,16 @@ function bindControls() {
     );
     org.querySelector(".search input").oninput = renderOrg;
   }
-  const nf = document.querySelector('[data-title="Activity & notifications"]');
-  if (nf && !nf.dataset.bound) {
-    nf.dataset.bound = 1;
-    nf.querySelectorAll(".filters .tab").forEach(
-      (t) =>
-        (t.onclick = () => {
-          notificationFilter = t.textContent.trim();
-          renderLogs();
-        }),
-    );
-  }
+  document
+    .querySelectorAll('[data-title="Activity & notifications"] .filters .tab, [data-notification-filter]')
+    .forEach((t) => {
+      if (t.dataset.bound) return;
+      t.dataset.bound = 1;
+      t.onclick = () => {
+        notificationFilter = t.dataset.notificationFilter || t.textContent.trim();
+        renderLogs();
+      };
+    });
   const br = document.getElementById("bookingResource"),
     bd = document.getElementById("bookingDay");
   if (br && !br.dataset.bound) {
@@ -891,10 +896,19 @@ bind('[data-title="Activity & notifications"] .page-head .btn', () => {
   save();
   toast("All notifications marked as read");
 });
+bind("#markNotificationsRead", () => {
+  db.logs.forEach((x) => (x.read = true));
+  db.logs.forEach((x) => {
+    if (x.id) apiPatch("logs", x.id, { read: true }).catch((e) => toast(e.message || "Save failed"));
+  });
+  save();
+  toast("All notifications marked as read");
+});
 const searchBtn = document.getElementById("searchToggle");
 if (searchBtn)
   searchBtn.onclick = () => {
-    document.getElementById("globalSearch")?.classList.toggle("open");
+    const searchPopover = document.getElementById("globalSearch");
+    if (!searchPopover?.matches(":popover-open")) searchPopover?.showPopover?.();
     setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 20);
   };
 const globalSearchInput = document.getElementById("globalSearchInput");
@@ -920,7 +934,7 @@ if (globalSearchInput) globalSearchInput.oninput = (e) => {
     items
       .map(
         (x) =>
-          `<div class="result" onclick="${x.action};document.getElementById('globalSearch').classList.remove('open')"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div>`,
+          `<div class="result" onclick="${x.action};document.getElementById('globalSearch').hidePopover?.()"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div>`,
       )
       .join("") || '<div class="empty">No matching results</div>';
 };
@@ -993,7 +1007,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
     closeDrawer();
-    document.getElementById("globalSearch")?.classList.remove("open");
+    document.getElementById("globalSearch")?.hidePopover?.();
+    document.getElementById("notificationsPopover")?.hidePopover?.();
     closeMobileSidebar();
   }
 });

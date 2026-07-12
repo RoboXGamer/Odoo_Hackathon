@@ -36,6 +36,15 @@
   .auth-form .btn{width:100%;margin-top:4px}
   .auth-link{color:var(--muted);font-size:13px;text-align:center;margin:18px 0 0}
   .auth-link a{color:var(--brand);font-weight:750;text-decoration:none}
+  [popover]{border:0;margin:0}
+  .global-results:popover-open,.notification-popover:popover-open{display:block}
+  .notification-popover{position:fixed;z-index:70;top:65px;right:34px;width:min(440px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 84px));overflow:auto;background:white;border:1px solid var(--line);border-radius:15px;box-shadow:0 20px 55px #0f172a25;padding:12px;display:none;color:var(--ink)}
+  .popover-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:4px 4px 10px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .popover-head h3{font-size:15px;margin:0}
+  .popover-head small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+  .filters.compact{margin-bottom:8px}
+  .notification-popover .log-row{grid-template-columns:35px 1fr;align-items:start}
+  .notification-popover .log-row time{grid-column:2}
 </style>
 <style is:global>
   [data-lucide]{width:18px;height:18px;stroke-width:2.2}
