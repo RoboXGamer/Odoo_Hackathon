@@ -1,0 +1,41 @@
+---
+import Layout from './Layout.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Topbar from '../components/Topbar.astro';
+import Modal from '../components/Modal.astro';
+import Drawer from '../components/Drawer.astro';
+import GlobalSearch from '../components/GlobalSearch.astro';
+import Toast from '../components/Toast.astro';
+import { auth } from '../lib/auth';
+
+const { title = 'Dashboard' } = Astro.props;
+const session = await auth.api.getSession({
+  headers: Astro.request.headers,
+});
+const userName = session?.user?.name ?? session?.user?.email ?? 'User';
+const userEmail = session?.user?.email ?? '';
+const userRole = session?.user?.role === 'viewer' ? 'Viewer' : session?.user?.role === 'manager' ? 'Manager' : 'Administrator';
+const activePath = Astro.url.pathname;
+---
+
+<Layout>
+  <div class="app">
+    <div class="mobile-overlay" id="overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <Sidebar userName={userName} userRole={userRole} userEmail={userEmail} activePath={activePath} />
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <Topbar title={title} />
+      </header>
+      <div class="content">
+        <slot name="page" />
+      </div>
+    </main>
+  </div>
+  <Modal />
+  <Drawer />
+  <GlobalSearch />
+  <Toast />
+  <script src="../scripts/app.js"></script>
+</Layout>

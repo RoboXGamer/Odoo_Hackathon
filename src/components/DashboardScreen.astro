@@ -3,8 +3,7 @@ const { userName = 'there' } = Astro.props;
 const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
 ---
 
-<template id="dashboard-template">
-  <section class="screen" data-title="Dashboard">
+  <section class="screen active" data-title="Dashboard">
     <div class="page-head">
       <div>
         <div class="eyebrow">Sunday, 12 July</div>
@@ -71,4 +70,4 @@ const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
       </div>
     </div>
   </section>
-</template>
+

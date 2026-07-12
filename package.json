@@ -10,7 +10,8 @@
     "build": "astro check && astro build",
     "typecheck": "astro check",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "db": "drizzle-kit studio"
   },
   "dependencies": {
     "@astrojs/node": "^11.0.2",
