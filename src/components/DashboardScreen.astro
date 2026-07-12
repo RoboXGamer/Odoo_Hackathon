@@ -1,0 +1,74 @@
+---
+const { userName = 'there' } = Astro.props;
+const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
+---
+
+<template id="dashboard-template">
+  <section class="screen" data-title="Dashboard">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Sunday, 12 July</div>
+        <h2>Good morning, {firstName}</h2>
+        <p>Here's what's happening across your asset operations today.</p>
+      </div>
+      <button class="btn">Export overview</button>
+    </div>
+    <div class="grid stats">
+      <div class="stat" style="--accent:#635bff">
+        <div class="stat-top"><span>Total assets</span><span class="stat-icon">Assets</span></div>
+        <strong>128</strong>
+        <span class="trend">8.2% this month</span>
+      </div>
+      <div class="stat" style="--accent:#14b8a6">
+        <div class="stat-top"><span>Allocated</span><span class="stat-icon">Up</span></div>
+        <strong>76</strong>
+        <span class="trend neutral">59.4% utilization</span>
+      </div>
+      <div class="stat" style="--accent:#3b82f6">
+        <div class="stat-top"><span>Available</span><span class="stat-icon">Ok</span></div>
+        <strong>43</strong>
+        <span class="trend">5 ready today</span>
+      </div>
+      <div class="stat" style="--accent:#f59e0b">
+        <div class="stat-top"><span>Active bookings</span><span class="stat-icon">Cal</span></div>
+        <strong>9</strong>
+        <span class="trend neutral">3 pending transfers</span>
+      </div>
+    </div>
+    <div class="alert">
+      <span>3 assets are overdue for return and need follow-up.</span>
+      <button class="btn danger" onclick="showScreen('notifications')">Review now</button>
+    </div>
+    <div class="grid quick">
+      <button class="btn" onclick="openModal('Register asset')">Register asset</button>
+      <button class="btn" onclick="showScreen('booking')">Book resource</button>
+      <button class="btn" onclick="showScreen('maintenance')">Raise request</button>
+    </div>
+    <div class="grid dash-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Recent activity</h3>
+            <div class="panel-sub">Latest movements across all departments</div>
+          </div>
+          <button class="btn" onclick="showScreen('notifications')">View all</button>
+        </div>
+        <div class="activity" id="activityList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Asset utilization</h3>
+            <div class="panel-sub">Current portfolio health</div>
+          </div>
+        </div>
+        <div class="ring-wrap"><div class="ring"><strong>72%</strong></div></div>
+        <div class="legend">
+          <div class="legend-row" style="--c:#635bff"><span>Allocated</span><b>76</b></div>
+          <div class="legend-row" style="--c:#14b8a6"><span>Available</span><b>43</b></div>
+          <div class="legend-row" style="--c:#f59e0b"><span>Maintenance</span><b>9</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

@@ -1,0 +1,47 @@
+<template id="allocation-template">
+  <section class="screen" data-title="Allocation &amp; transfer">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Asset custody</div>
+        <h2>Allocation &amp; transfer</h2>
+        <p>Move equipment safely with clear ownership history.</p>
+      </div>
+    </div>
+    <div class="panel" style="max-width:850px">
+      <div class="form-grid">
+        <div class="field full">
+          <label>Asset</label>
+          <select><option>AF-0114 — Dell Latitude laptop</option></select>
+        </div>
+      </div>
+      <div class="warning">
+        <b>!</b>
+        <div>
+          <b>Already allocated to Priya Shah (Engineering)</b><br>
+          <small>Direct re-allocation is blocked. Submit a transfer request below.</small>
+        </div>
+      </div>
+      <h3 style="margin:19px 0 14px">Transfer request</h3>
+      <div class="form-grid">
+        <div class="field"><label>From</label><input value="Priya Shah" disabled></div>
+        <div class="field">
+          <label>Transfer to</label>
+          <select><option>Select employee...</option><option>Arjun Nair</option><option>Rohan Mehta</option></select>
+        </div>
+        <div class="field full"><label>Reason</label><textarea placeholder="Add a clear reason for this transfer..."></textarea></div>
+      </div>
+      <button class="btn primary" style="margin-top:14px" onclick="toast('Transfer request submitted')">Submit request</button>
+      <div class="history">
+        <h3>Allocation history</h3>
+        <div class="history-row">
+          <span class="history-line"></span>
+          <div><b>Allocated to Priya Shah — Engineering</b><small>12 March · Approved by Aditi Rao</small></div>
+        </div>
+        <div class="history-row">
+          <span class="history-line" style="background:#94a3b8;box-shadow:0 0 0 4px #f1f5f9"></span>
+          <div><b>Returned by Arjun Nair — Good condition</b><small>04 January · Warehouse check-in</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

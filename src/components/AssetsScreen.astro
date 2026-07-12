@@ -1,0 +1,31 @@
+<template id="assets-template">
+  <section class="screen" data-title="Asset directory">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Inventory</div>
+        <h2>Assets directory</h2>
+        <p>Track ownership, condition, availability, and location.</p>
+      </div>
+      <button class="btn primary" onclick="openModal('Register asset')">＋ Register asset</button>
+    </div>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search">
+          <span style="position:absolute;left:13px;top:10px">⌕</span>
+          <input placeholder="Search by name, tag, serial or QR code...">
+        </div>
+        <select class="btn"><option>All categories</option><option>Electronics</option><option>Furniture</option></select>
+        <select class="btn"><option>All statuses</option></select>
+        <select class="btn"><option>All departments</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Asset</th><th>Category</th><th>Status</th><th>Department</th><th>Location</th><th>Updated</th></tr>
+          </thead>
+          <tbody id="assetRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</template>
