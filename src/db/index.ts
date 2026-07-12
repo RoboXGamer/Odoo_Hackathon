@@ -119,6 +119,9 @@ export async function ensureDb() {
       id TEXT PRIMARY KEY NOT NULL,
       asset TEXT NOT NULL REFERENCES assets(id) ON UPDATE CASCADE ON DELETE RESTRICT,
       title TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'Medium',
+      requester TEXT NOT NULL DEFAULT '',
+      photo TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL,
       assignee TEXT NOT NULL,
       date TEXT NOT NULL
@@ -191,6 +194,9 @@ export async function ensureDb() {
     "ALTER TABLE bookings ADD COLUMN department TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE bookings ADD COLUMN reminder_at TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE bookings ADD COLUMN cancelled_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE maintenance_requests ADD COLUMN priority TEXT NOT NULL DEFAULT 'Medium'",
+    "ALTER TABLE maintenance_requests ADD COLUMN requester TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE maintenance_requests ADD COLUMN photo TEXT NOT NULL DEFAULT ''",
   ]) {
     try {
       await client.execute(statement);
@@ -363,6 +369,7 @@ export async function createResourceItem(resource: ResourceName, payload: unknow
       throw new Error('This slot overlaps with an existing booking. Choose another time.');
     }
   }
+  if (resource === 'maintenance') values.status = 'Pending';
   await assertReferences(resource, values as Record<string, any>);
   await db.insert(config.table as any).values(values as any);
   if (resource === 'allocations') {
@@ -397,6 +404,10 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
     const [allocation] = await db.select().from(tables.allocations).where(eq(tables.allocations.id, id));
     await db.update(tables.allocations).set({ returnedAt: (values as any).returnedAt || new Date().toISOString() }).where(eq(tables.allocations.id, id));
     await db.update(tables.assets).set({ status: 'Available', owner: '-', updated: 'Just now', condition: (values as any).checkInCondition || 'Good' }).where(eq(tables.assets.id, allocation.asset));
+  }
+  if (resource === 'maintenance' && ['Approved', 'Resolved'].includes((values as any).status)) {
+    const [request] = await db.select().from(tables.maintenance).where(eq(tables.maintenance.id, id));
+    await db.update(tables.assets).set({ status: (values as any).status === 'Approved' ? 'Under Maintenance' : 'Available', updated: 'Just now' }).where(eq(tables.assets.id, request.asset));
   }
   if (resource === 'employees' && (values as any).role) {
     const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.id, id));

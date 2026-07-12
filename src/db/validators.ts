@@ -54,7 +54,10 @@ export const maintenanceSchema = z.object({
   id: requiredText,
   asset: requiredText,
   title: requiredText,
-  status: status(['Pending', 'Approved', 'Technician assigned', 'In progress', 'Resolved']),
+  priority: status(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
+  requester: z.string().trim().default(''),
+  photo: z.string().trim().default(''),
+  status: status(['Pending', 'Approved', 'Rejected', 'Technician assigned', 'In progress', 'Resolved']).default('Pending'),
   assignee: z.string().trim().default('Unassigned'),
   date: z.string().trim().default('Just now'),
 });
