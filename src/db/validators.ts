@@ -38,6 +38,8 @@ export const employeeSchema = z.object({
   name: requiredText,
   department: normalizedDepartment,
   email: z.email(),
+  userId: z.string().trim().nullable().optional(),
+  role: status(['admin', 'asset_manager', 'department_head', 'employee']).default('employee'),
   status: status(['Active', 'Inactive']),
 });
 

@@ -97,6 +97,8 @@ export async function ensureDb() {
       name TEXT NOT NULL,
       department TEXT NOT NULL REFERENCES departments(name) ON UPDATE CASCADE ON DELETE RESTRICT,
       email TEXT NOT NULL UNIQUE,
+      user_id TEXT REFERENCES user(id) ON DELETE SET NULL,
+      role TEXT NOT NULL DEFAULT 'employee',
       status TEXT NOT NULL,
       UNIQUE(name)
     );
@@ -145,6 +147,17 @@ export async function ensureDb() {
       read INTEGER NOT NULL DEFAULT 0
     );
   `);
+
+  for (const statement of [
+    "ALTER TABLE employees ADD COLUMN user_id TEXT REFERENCES user(id) ON DELETE SET NULL",
+    "ALTER TABLE employees ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'",
+  ]) {
+    try {
+      await client.execute(statement);
+    } catch (error) {
+      if (!String(error).toLowerCase().includes('duplicate column')) throw error;
+    }
+  }
 
   const [{ value }] = await db.select({ value: count() }).from(tables.assets);
   await db.insert(tables.departments).values(seedData.departments).onConflictDoNothing();

@@ -72,6 +72,8 @@ export const employees = sqliteTable('employees', {
   name: text('name').notNull(),
   department: text('department').notNull().references(() => departments.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
   email: text('email').notNull(),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+  role: text('role').notNull().default('employee'),
   status: text('status').notNull(),
 }, (table) => [
   uniqueIndex('employees_name_unique').on(table.name),
