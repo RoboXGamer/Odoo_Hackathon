@@ -1,4 +1,4 @@
-import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { int, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
@@ -47,17 +47,6 @@ export const verification = sqliteTable('verification', {
   updatedAt: int('updatedAt', { mode: 'timestamp' }),
 });
 
-export const assets = sqliteTable('assets', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  category: text('category').notNull(),
-  status: text('status').notNull(),
-  department: text('department').notNull(),
-  location: text('location').notNull(),
-  owner: text('owner').notNull(),
-  updated: text('updated').notNull(),
-});
-
 export const departments = sqliteTable('departments', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -65,26 +54,53 @@ export const departments = sqliteTable('departments', {
   parent: text('parent').notNull(),
   employees: int('employees').notNull().default(0),
   status: text('status').notNull(),
-});
+}, (table) => [
+  uniqueIndex('departments_name_unique').on(table.name),
+]);
 
 export const categories = sqliteTable('categories', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   count: int('count').notNull().default(0),
   status: text('status').notNull(),
-});
+}, (table) => [
+  uniqueIndex('categories_name_unique').on(table.name),
+]);
 
 export const employees = sqliteTable('employees', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  department: text('department').notNull(),
+  department: text('department').notNull().references(() => departments.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
   email: text('email').notNull(),
   status: text('status').notNull(),
+}, (table) => [
+  uniqueIndex('employees_name_unique').on(table.name),
+  uniqueIndex('employees_email_unique').on(table.email),
+]);
+
+export const assets = sqliteTable('assets', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').notNull().references(() => categories.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
+  status: text('status').notNull(),
+  department: text('department').notNull().references(() => departments.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
+  location: text('location').notNull(),
+  owner: text('owner').notNull(),
+  updated: text('updated').notNull(),
 });
+
+export const bookingResources = sqliteTable('booking_resources', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  status: text('status').notNull(),
+}, (table) => [
+  uniqueIndex('booking_resources_name_unique').on(table.name),
+]);
 
 export const maintenance = sqliteTable('maintenance_requests', {
   id: text('id').primaryKey(),
-  asset: text('asset').notNull(),
+  asset: text('asset').notNull().references(() => assets.id, { onUpdate: 'cascade', onDelete: 'restrict' }),
   title: text('title').notNull(),
   status: text('status').notNull(),
   assignee: text('assignee').notNull(),
@@ -93,7 +109,7 @@ export const maintenance = sqliteTable('maintenance_requests', {
 
 export const bookings = sqliteTable('bookings', {
   id: text('id').primaryKey(),
-  resource: text('resource').notNull(),
+  resource: text('resource').notNull().references(() => bookingResources.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
   title: text('title').notNull(),
   date: text('date').notNull(),
   start: text('start').notNull(),
@@ -101,7 +117,7 @@ export const bookings = sqliteTable('bookings', {
 });
 
 export const audits = sqliteTable('audits', {
-  asset: text('asset').primaryKey(),
+  asset: text('asset').primaryKey().references(() => assets.id, { onUpdate: 'cascade', onDelete: 'restrict' }),
   name: text('name').notNull(),
   location: text('location').notNull(),
   status: text('status').notNull(),
@@ -110,8 +126,8 @@ export const audits = sqliteTable('audits', {
 
 export const transfers = sqliteTable('transfers', {
   id: text('id').primaryKey(),
-  asset: text('asset').notNull(),
-  to: text('to_employee').notNull(),
+  asset: text('asset').notNull().references(() => assets.id, { onUpdate: 'cascade', onDelete: 'restrict' }),
+  to: text('to_employee').notNull().references(() => employees.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
   reason: text('reason').notNull(),
   status: text('status').notNull(),
 });
@@ -134,6 +150,7 @@ export const schema = {
   departments,
   categories,
   employees,
+  bookingResources,
   maintenance,
   bookings,
   audits,

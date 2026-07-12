@@ -2,15 +2,18 @@ import { z } from 'zod';
 
 const requiredText = z.string().trim().min(1);
 const status = <T extends [string, ...string[]]>(values: T) => z.enum(values);
+const blankAsDash = z.string().trim().transform((value) => value || '-');
+const normalizedDepartment = z.string().trim().transform((value) => ['-', '—', 'â€”'].includes(value) ? 'Unassigned' : value).pipe(requiredText);
+const timeText = z.string().trim().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'Expected time in HH:mm format');
 
 export const assetSchema = z.object({
   id: requiredText,
   name: requiredText,
   category: requiredText,
   status: status(['Available', 'Allocated', 'Maintenance', 'Retired']),
-  department: requiredText,
+  department: normalizedDepartment,
   location: requiredText,
-  owner: z.string().trim().default('-'),
+  owner: blankAsDash.default('-'),
   updated: z.string().trim().default('Just now'),
 });
 
@@ -33,7 +36,7 @@ export const categorySchema = z.object({
 export const employeeSchema = z.object({
   id: requiredText,
   name: requiredText,
-  department: requiredText,
+  department: normalizedDepartment,
   email: z.email(),
   status: status(['Active', 'Inactive']),
 });
@@ -52,11 +55,18 @@ export const bookingSchema = z.object({
   resource: requiredText,
   title: requiredText,
   date: z.iso.date(),
-  start: z.iso.time({ precision: -1 }),
-  end: z.iso.time({ precision: -1 }),
+  start: timeText,
+  end: timeText,
 }).refine((value) => value.end > value.start, {
   message: 'End time must be after start time.',
   path: ['end'],
+});
+
+export const bookingResourceSchema = z.object({
+  id: requiredText,
+  name: requiredText,
+  type: status(['Room', 'Asset', 'Vehicle', 'Equipment']),
+  status: status(['Active', 'Inactive']),
 });
 
 export const auditSchema = z.object({
@@ -89,6 +99,7 @@ export const resourceSchemas = {
   departments: departmentSchema,
   categories: categorySchema,
   employees: employeeSchema,
+  bookingResources: bookingResourceSchema,
   maintenance: maintenanceSchema,
   bookings: bookingSchema,
   audits: auditSchema,
