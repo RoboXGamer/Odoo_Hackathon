@@ -163,12 +163,12 @@ function renderOrg() {
       .join("");
   } else {
     head.innerHTML =
-      "<tr><th>Employee</th><th>Department</th><th>Email</th><th>Status</th><th></th></tr>";
+      "<tr><th>Employee</th><th>Department</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>";
     body.innerHTML = db.employees
       .filter((x) => x.name.toLowerCase().includes(search))
       .map(
         (x) =>
-          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.department)}</td><td>${esc(x.email)}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="editOrg('Employee','${x.id}')">Edit</button></td></tr>`,
+          `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.department)}</td><td>${esc(x.email)}</td><td>${esc((x.role || "employee").replaceAll("_", " "))}</td><td>${badge(x.status)}</td><td><button class="action-btn" onclick="editOrg('Employee','${x.id}')">Edit</button></td></tr>`,
       )
       .join("");
   }
@@ -562,11 +562,11 @@ function editOrg(type, id) {
     item = db[key].find((x) => x.id === id) || {};
   let html;
   if (type === "Department")
-    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Head</label><input name="head" value="${esc(item.head || "")}"></div><div class="field"><label>Parent</label><input name="parent" value="${esc(item.parent || "—")}"></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
+    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Head</label><select name="head"><option value="-">Unassigned</option>${optionList(db.employees.map((x) => x.name), item.head)}</select></div><div class="field"><label>Parent</label><select name="parent"><option value="-">No parent</option>${optionList(db.departments.filter((x) => x.id !== id).map((x) => x.name), item.parent)}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   else if (type === "Category")
     html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   else
-    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Email *</label><input name="email" type="email" required value="${esc(item.email || "")}"></div><div class="field"><label>Department</label><select name="department">${db.departments.map((x) => `<option ${x.name === item.department ? "selected" : ""}>${x.name}</option>`).join("")}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
+    html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Email *</label><input name="email" type="email" required value="${esc(item.email || "")}"></div><div class="field"><label>Department</label><select name="department">${db.departments.map((x) => `<option ${x.name === item.department ? "selected" : ""}>${x.name}</option>`).join("")}</select></div><div class="field"><label>Role</label><select name="role">${optionList(["employee", "department_head", "asset_manager", "admin"], item.role || "employee")}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   setModal(`${id ? "Edit" : "Add"} ${type}`, html, async (fd) => {
     if (id) {
       Object.assign(item, fd);
