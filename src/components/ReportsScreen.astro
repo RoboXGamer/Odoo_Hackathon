@@ -8,7 +8,7 @@
       <button class="btn">↓ Export report</button>
     </div>
     <div class="grid chart-grid">
-      <div class="panel chart">
+      <div class="panel chart report-chart">
         <div class="panel-head">
           <div>
             <h3>Utilization by department</h3>
@@ -16,17 +16,16 @@
           </div>
           <span class="badge blue">+6.4%</span>
         </div>
-        <div class="bars">
-          <div class="bar" style="--h:58%" data-v="58%"></div>
-          <div class="bar" style="--h:81%" data-v="81%"></div>
-          <div class="bar" style="--h:94%" data-v="94%"></div>
-          <div class="bar" style="--h:69%" data-v="69%"></div>
-          <div class="bar" style="--h:54%" data-v="54%"></div>
-          <div class="bar" style="--h:84%" data-v="84%"></div>
+        <div class="report-bars">
+          <div class="report-bar-item"><div class="bar" style="--h:58%" data-v="58%"></div><span>Ops</span></div>
+          <div class="report-bar-item"><div class="bar" style="--h:81%" data-v="81%"></div><span>Eng</span></div>
+          <div class="report-bar-item"><div class="bar" style="--h:94%" data-v="94%"></div><span>Sales</span></div>
+          <div class="report-bar-item"><div class="bar" style="--h:69%" data-v="69%"></div><span>HR</span></div>
+          <div class="report-bar-item"><div class="bar" style="--h:54%" data-v="54%"></div><span>Fin</span></div>
+          <div class="report-bar-item"><div class="bar" style="--h:84%" data-v="84%"></div><span>Field</span></div>
         </div>
-        <div class="chart-labels"><span>Ops</span><span>Eng</span><span>Sales</span><span>HR</span><span>Fin</span><span>Field</span></div>
       </div>
-      <div class="panel chart">
+      <div class="panel chart report-chart">
         <div class="panel-head">
           <div>
             <h3>Maintenance frequency</h3>
@@ -62,4 +61,68 @@
       </div>
     </div>
   </section>
+
+  <style>
+    .report-chart {
+      height: auto;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .report-chart .panel-head {
+      margin-bottom: 22px;
+    }
+
+    .report-bars {
+      flex: 1;
+      min-height: 165px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(42px, 1fr));
+      align-items: end;
+      gap: 16px;
+      padding: 10px 4px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-bar-item {
+      height: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: 1fr 28px;
+      align-items: end;
+      justify-items: center;
+    }
+
+    .report-bar-item .bar {
+      width: min(56px, 100%);
+      max-width: none;
+      min-height: 18px;
+    }
+
+    .report-bar-item span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 28px;
+      white-space: nowrap;
+    }
+
+    .report-chart .linechart {
+      flex: 1;
+      min-height: 168px;
+      padding: 8px 0 0;
+    }
+
+    @media (max-width: 780px) {
+      .report-bars {
+        gap: 10px;
+        grid-template-columns: repeat(6, minmax(32px, 1fr));
+      }
+
+      .report-bar-item .bar {
+        width: min(42px, 100%);
+      }
+    }
+  </style>
 
