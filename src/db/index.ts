@@ -211,6 +211,8 @@ export async function ensureDb() {
 
 export async function getAppState() {
   await ensureDb();
+  const allocationRows = await db.select().from(tables.allocations);
+  const today = new Date().toISOString().slice(0, 10);
   return {
     assets: await db.select().from(tables.assets),
     departments: await db.select().from(tables.departments),
@@ -221,7 +223,7 @@ export async function getAppState() {
     bookings: await db.select().from(tables.bookings),
     audits: await db.select().from(tables.audits),
     transfers: await db.select().from(tables.transfers),
-    allocations: await db.select().from(tables.allocations),
+    allocations: allocationRows.map((item) => ({ ...item, overdue: item.status !== 'Returned' && Boolean(item.expectedReturn) && item.expectedReturn < today })),
     logs: await db.select({
       id: tables.logs.id,
       type: tables.logs.type,
@@ -368,6 +370,11 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
     await db.insert(tables.allocations).values({ id: `AL-${Date.now()}`, asset: transfer.asset, holderType: 'Employee', holder: transfer.to, allocatedAt: new Date().toISOString(), expectedReturn: '', returnedAt: '', status: 'Active', checkInCondition: '', checkInNotes: '' });
     await db.update(tables.assets).set({ status: 'Allocated', owner: transfer.to, department: employee?.department ?? 'Unassigned', updated: 'Just now' }).where(eq(tables.assets.id, transfer.asset));
     await db.update(tables.transfers).set({ status: 'Completed', decidedAt: new Date().toISOString() }).where(eq(tables.transfers.id, id));
+  }
+  if (resource === 'allocations' && (values as any).status === 'Returned') {
+    const [allocation] = await db.select().from(tables.allocations).where(eq(tables.allocations.id, id));
+    await db.update(tables.allocations).set({ returnedAt: (values as any).returnedAt || new Date().toISOString() }).where(eq(tables.allocations.id, id));
+    await db.update(tables.assets).set({ status: 'Available', owner: '-', updated: 'Just now', condition: (values as any).checkInCondition || 'Good' }).where(eq(tables.assets.id, allocation.asset));
   }
   if (resource === 'employees' && (values as any).role) {
     const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.id, id));

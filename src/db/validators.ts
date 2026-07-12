@@ -104,7 +104,7 @@ export const allocationSchema = z.object({
   allocatedAt: z.string().trim().default(() => new Date().toISOString()),
   expectedReturn: z.string().trim().default(''),
   returnedAt: z.string().trim().default(''),
-  status: status(['Active', 'Returned']).default('Active'),
+  status: status(['Active', 'Return Requested', 'Returned']).default('Active'),
   checkInCondition: z.string().trim().default(''),
   checkInNotes: z.string().trim().default(''),
 });

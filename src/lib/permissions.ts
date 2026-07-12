@@ -23,7 +23,7 @@ function can(role: Role, resource: ResourceName, action: Action) {
   if (role === 'admin') return true;
   if (['departments', 'categories', 'employees'].includes(resource)) return action === 'read';
   if (role === 'employee') {
-    return action === 'read' || (action === 'create' && ['bookings', 'maintenance', 'transfers'].includes(resource));
+    return action === 'read' || (action === 'create' && ['bookings', 'maintenance', 'transfers'].includes(resource)) || (action === 'update' && resource === 'allocations');
   }
   if (action === 'read') return true;
   if (action === 'delete') return false;
