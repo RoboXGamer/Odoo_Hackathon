@@ -143,7 +143,9 @@ export async function ensureDb() {
       asset TEXT NOT NULL REFERENCES assets(id) ON UPDATE CASCADE ON DELETE RESTRICT,
       to_employee TEXT NOT NULL REFERENCES employees(name) ON UPDATE CASCADE ON DELETE RESTRICT,
       reason TEXT NOT NULL,
-      status TEXT NOT NULL
+      status TEXT NOT NULL,
+      requested_at TEXT NOT NULL DEFAULT '',
+      decided_at TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS allocations (
       id TEXT PRIMARY KEY NOT NULL,
@@ -177,6 +179,8 @@ export async function ensureDb() {
     "ALTER TABLE assets ADD COLUMN acquisition_cost INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE assets ADD COLUMN shared INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE assets ADD COLUMN attachments TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transfers ADD COLUMN requested_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transfers ADD COLUMN decided_at TEXT NOT NULL DEFAULT ''",
   ]) {
     try {
       await client.execute(statement);
@@ -357,6 +361,14 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
   await assertReferences(resource, values as Record<string, any>);
 
   await db.update(config.table as any).set(values as any).where(eq(config.idColumn as any, id));
+  if (resource === 'transfers' && (values as any).status === 'Approved') {
+    const [transfer] = await db.select().from(tables.transfers).where(eq(tables.transfers.id, id));
+    const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.name, transfer.to));
+    await db.update(tables.allocations).set({ status: 'Returned', returnedAt: new Date().toISOString() }).where(eq(tables.allocations.asset, transfer.asset));
+    await db.insert(tables.allocations).values({ id: `AL-${Date.now()}`, asset: transfer.asset, holderType: 'Employee', holder: transfer.to, allocatedAt: new Date().toISOString(), expectedReturn: '', returnedAt: '', status: 'Active', checkInCondition: '', checkInNotes: '' });
+    await db.update(tables.assets).set({ status: 'Allocated', owner: transfer.to, department: employee?.department ?? 'Unassigned', updated: 'Just now' }).where(eq(tables.assets.id, transfer.asset));
+    await db.update(tables.transfers).set({ status: 'Completed', decidedAt: new Date().toISOString() }).where(eq(tables.transfers.id, id));
+  }
   if (resource === 'employees' && (values as any).role) {
     const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.id, id));
     if (employee?.userId) {

@@ -139,6 +139,8 @@ export const transfers = sqliteTable('transfers', {
   to: text('to_employee').notNull().references(() => employees.name, { onUpdate: 'cascade', onDelete: 'restrict' }),
   reason: text('reason').notNull(),
   status: text('status').notNull(),
+  requestedAt: text('requested_at').notNull().default(''),
+  decidedAt: text('decided_at').notNull().default(''),
 });
 
 export const allocations = sqliteTable('allocations', {

@@ -92,6 +92,8 @@ export const transferSchema = z.object({
   to: requiredText,
   reason: requiredText,
   status: status(['Pending', 'Approved', 'Rejected', 'Completed']).default('Pending'),
+  requestedAt: z.string().trim().default(() => new Date().toISOString()),
+  decidedAt: z.string().trim().default(''),
 });
 
 export const allocationSchema = z.object({
