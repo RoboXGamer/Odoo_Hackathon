@@ -241,6 +241,15 @@ async function assertReferences(resource: ResourceName, values: Record<string, a
     throw new Error(`Unknown department: ${values.department}`);
   }
 
+  if (resource === 'departments') {
+    if (values.parent && !['-', '—'].includes(values.parent) && !(await existsByName(tables.departments, tables.departments.name, values.parent))) {
+      throw new Error(`Unknown parent department: ${values.parent}`);
+    }
+    if (values.head && !['-', ''].includes(values.head) && !(await existsByName(tables.employees, tables.employees.name, values.head))) {
+      throw new Error(`Unknown department head employee: ${values.head}`);
+    }
+  }
+
   if ((resource === 'maintenance' || resource === 'audits' || resource === 'transfers') && values.asset && !(await exists('assets', values.asset))) {
     throw new Error(`Unknown asset: ${values.asset}`);
   }
@@ -305,6 +314,12 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
   await assertReferences(resource, values as Record<string, any>);
 
   await db.update(config.table as any).set(values as any).where(eq(config.idColumn as any, id));
+  if (resource === 'employees' && (values as any).role) {
+    const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.id, id));
+    if (employee?.userId) {
+      await db.update(tables.user).set({ role: (values as any).role, updatedAt: new Date() }).where(eq(tables.user.id, employee.userId));
+    }
+  }
   return getResourceItem(resource, id);
 }
 

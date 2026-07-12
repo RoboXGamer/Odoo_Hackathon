@@ -20,6 +20,7 @@ const managerWritable: ResourceName[] = [
 
 function can(role: Role, resource: ResourceName, action: Action) {
   if (role === 'admin') return true;
+  if (['departments', 'categories', 'employees'].includes(resource)) return action === 'read';
   if (role === 'employee') {
     return action === 'read' || (action === 'create' && ['bookings', 'maintenance', 'transfers'].includes(resource));
   }
