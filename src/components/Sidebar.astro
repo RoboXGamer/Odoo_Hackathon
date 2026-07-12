@@ -6,7 +6,8 @@ const initials = String(userName)
   .join('')
   .slice(0, 2)
   .toUpperCase();
-const links = [
+type NavigationLink = [href: string, label: string, icon: string, roles: string[]];
+const allLinks: NavigationLink[] = [
   ['/', 'Dashboard', 'layout-dashboard', ['admin', 'asset_manager', 'department_head', 'employee']],
   ['/organization', 'Organization', 'building-2', ['admin']],
   ['/assets', 'Assets', 'boxes', ['admin', 'asset_manager', 'department_head', 'employee']],
@@ -16,7 +17,8 @@ const links = [
   ['/audit', 'Audit', 'clipboard-check', ['admin', 'asset_manager', 'department_head']],
   ['/reports', 'Reports', 'chart-column', ['admin', 'asset_manager', 'department_head']],
   ['/notifications', 'Notifications', 'bell', ['admin', 'asset_manager', 'department_head', 'employee']],
-].filter(([, , , roles]) => roles.includes(role));
+];
+const links = allLinks.filter(([, , , roles]) => roles.includes(role));
 ---
 
 <div class="brand">
