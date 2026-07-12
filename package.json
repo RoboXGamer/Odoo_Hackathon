@@ -1,0 +1,28 @@
+{
+  "name": "asset-flow",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "typecheck": "astro check",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.0.2",
+    "@better-auth/drizzle-adapter": "^1.6.23",
+    "astro": "^7.0.7",
+    "better-auth": "^1.6.23",
+    "drizzle-orm": "1.0.0-rc.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@types/node": "^26.1.1",
+    "drizzle-kit": "1.0.0-rc.4",
+    "typescript": "^6.0.3"
+  }
+}
