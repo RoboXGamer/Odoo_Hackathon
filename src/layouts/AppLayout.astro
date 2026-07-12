@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar.astro';
 import Topbar from '../components/Topbar.astro';
 import Modal from '../components/Modal.astro';
 import Drawer from '../components/Drawer.astro';
-import GlobalSearch from '../components/GlobalSearch.astro';
 import NotificationsPopover from '../components/NotificationsPopover.astro';
 import Toast from '../components/Toast.astro';
 import { auth } from '../lib/auth';
@@ -47,7 +46,6 @@ if (activePath === '/organization' && role !== 'admin') {
   </div>
   <Modal />
   <Drawer />
-  <GlobalSearch />
   <NotificationsPopover />
   <Toast />
   <script src="../scripts/app.js"></script>

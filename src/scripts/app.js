@@ -879,40 +879,22 @@ bind("#markNotificationsRead", () => {
   save();
   toast("All notifications marked as read");
 });
-const searchBtn = document.getElementById("searchToggle");
-if (searchBtn)
-  searchBtn.onclick = () => {
-    const searchPopover = document.getElementById("globalSearch");
-    if (!searchPopover?.matches(":popover-open")) searchPopover?.showPopover?.();
-    setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 20);
-  };
-const globalSearchInput = document.getElementById("globalSearchInput");
-if (globalSearchInput) globalSearchInput.oninput = (e) => {
-  const q = e.target.value.toLowerCase(),
-    items = [
-      ...db.assets.map((x) => ({
-        title: `${x.id} · ${x.name}`,
-        sub: `Asset · ${x.location}`,
-        action: `openAsset('${x.id}')`,
-      })),
-      ...db.employees.map((x) => ({
-        title: x.name,
-        sub: `Employee · ${x.department}`,
-        action: `showScreen('organization')`,
-      })),
-    ]
-      .filter((x) => (x.title + x.sub).toLowerCase().includes(q))
-      .slice(0, 7);
-  const globalSearchList = document.getElementById("globalSearchList");
-  if (!globalSearchList) return;
-  globalSearchList.innerHTML =
-    items
-      .map(
-        (x) =>
-          `<div class="result" onclick="${x.action};document.getElementById('globalSearch').hidePopover?.()"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div>`,
-      )
-      .join("") || '<div class="empty">No matching results</div>';
-};
+const notificationsToggle = document.getElementById("notificationsToggle");
+const notificationsPopover = document.getElementById("notificationsPopover");
+function positionNotificationsPopover() {
+  if (!notificationsToggle || !notificationsPopover) return;
+  const trigger = notificationsToggle.getBoundingClientRect();
+  const width = Math.min(440, window.innerWidth - 32);
+  const left = Math.max(16, Math.min(trigger.right - width, window.innerWidth - width - 16));
+  notificationsPopover.style.setProperty("--popover-left", `${left}px`);
+  notificationsPopover.style.setProperty("--popover-top", `${trigger.bottom + 10}px`);
+}
+notificationsPopover?.addEventListener("beforetoggle", (event) => {
+  if (event.newState === "open") positionNotificationsPopover();
+});
+window.addEventListener("resize", () => {
+  if (notificationsPopover?.matches(":popover-open")) positionNotificationsPopover();
+});
 Object.assign(window, {
   showScreen,
   openModal,
@@ -987,7 +969,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
     closeDrawer();
-    document.getElementById("globalSearch")?.hidePopover?.();
     document.getElementById("notificationsPopover")?.hidePopover?.();
     closeMobileSidebar();
   }

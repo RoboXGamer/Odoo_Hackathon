@@ -38,7 +38,7 @@
   .auth-link a{color:var(--brand);font-weight:750;text-decoration:none}
   [popover]{border:0;margin:0}
   .global-results:popover-open,.notification-popover:popover-open{display:block}
-  .notification-popover{position:fixed;z-index:70;top:65px;right:34px;width:min(440px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 84px));overflow:auto;background:white;border:1px solid var(--line);border-radius:15px;box-shadow:0 20px 55px #0f172a25;padding:12px;display:none;color:var(--ink)}
+  .notification-popover{position:fixed;z-index:70;inset:var(--popover-top,65px) auto auto var(--popover-left,calc(100vw - 456px));width:min(440px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 84px));overflow:auto;background:white;border:1px solid var(--line);border-radius:15px;box-shadow:0 20px 55px #0f172a25;padding:12px;display:none;color:var(--ink)}
   .popover-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:4px 4px 10px;border-bottom:1px solid var(--line);margin-bottom:10px}
   .popover-head h3{font-size:15px;margin:0}
   .popover-head small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
