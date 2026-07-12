@@ -242,7 +242,7 @@ function renderBookings() {
     document.getElementById("bookingResource")?.value || resources[0] || "";
   const day = document.getElementById("bookingDay")?.value || new Date().toISOString().slice(0, 10);
   const arr = db.bookings.filter(
-    (b) => b.resource === resource && b.date === day,
+    (b) => b.resource === resource && b.date === day && b.status !== "Cancelled",
   );
   tl.innerHTML = arr
     .map((b) => {
@@ -250,7 +250,7 @@ function renderBookings() {
         [eh, em] = b.end.split(":").map(Number),
         top = ((sh - 9) * 60 + sm) * 0.9,
         height = Math.max(36, ((eh - sh) * 60 + em - sm) * 0.9);
-      return `<div class="booking" style="top:${top}px;height:${height}px"><strong>${esc(b.title)}</strong><small>${b.start}–${b.end}</small><button class="action-btn" style="position:absolute;right:5px;top:4px" onclick="deleteBooking('${b.id}')">×</button></div>`;
+      return `<div class="booking" style="top:${top}px;height:${height}px"><strong>${esc(b.title)}</strong><small>${b.start}–${b.end} · ${esc(b.status || "Upcoming")}</small><button class="action-btn" style="position:absolute;right:30px;top:4px" onclick="rescheduleBooking('${b.id}')">Edit</button><button class="action-btn" style="position:absolute;right:5px;top:4px" onclick="deleteBooking('${b.id}')">×</button></div>`;
     })
     .join("");
   const toolbar = document.querySelector(
@@ -699,16 +699,18 @@ function moveCard(id, index) {
     .catch((e) => toast(e.message || "Save failed"));
   save();
 }
-function bookingModal() {
+function bookingModal(id) {
+  const current = db.bookings.find((x) => x.id === id) || {};
   const resources = (db.bookingResources?.length ? db.bookingResources.map((x) => x.name) : [...new Set(db.bookings.map((x) => x.resource))]);
   setModal(
-    "Book a resource",
-    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required></div><div class="field"><label>Date</label><input type="date" name="date" required value="${new Date().toISOString().slice(0, 10)}"></div><div></div><div class="field"><label>Start</label><input type="time" name="start" required value="10:00"></div><div class="field"><label>End</label><input type="time" name="end" required value="11:00"></div></div>`,
+    id ? "Reschedule booking" : "Book a resource",
+    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources, current.resource)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required value="${esc(current.title || "")}"></div><div class="field"><label>Requester</label><input name="requester" value="${esc(current.requester || "")}"></div><div class="field"><label>Department</label><input name="department" value="${esc(current.department || "")}"></div><div class="field"><label>Date</label><input type="date" name="date" required value="${current.date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Reminder</label><input type="datetime-local" name="reminderAt" value="${esc(current.reminderAt || "")}"></div><div class="field"><label>Start</label><input type="time" name="start" required value="${current.start || "10:00"}"></div><div class="field"><label>End</label><input type="time" name="end" required value="${current.end || "11:00"}"></div></div>`,
     async (fd) => {
       if (fd.end <= fd.start) throw Error("End time must be after start time.");
       if (
         db.bookings.some(
           (b) =>
+            b.id !== id &&
             b.resource === fd.resource &&
             b.date === fd.date &&
             fd.start < b.end &&
@@ -718,9 +720,9 @@ function bookingModal() {
         throw Error(
           "This slot overlaps with an existing booking. Choose another time.",
         );
-      const item = { id: uid("BK"), ...fd };
-      db.bookings.push(item);
-      await apiCreate("bookings", item);
+      const item = { id: id || uid("BK"), ...fd, status: "Upcoming", cancelledAt: "" };
+      if (id) { Object.assign(current, item); await apiPatch("bookings", id, fd); }
+      else { db.bookings.push(item); await apiCreate("bookings", item); }
       await apiCreate("logs", addLog(
         "Booking",
         `Booking confirmed: ${fd.resource}`,
@@ -732,13 +734,15 @@ function bookingModal() {
 }
 function deleteBooking(id) {
   if (confirm("Cancel this booking?")) {
-    db.bookings = db.bookings.filter((x) => x.id !== id);
-    apiDelete("bookings", id)
+    const booking = db.bookings.find((x) => x.id === id);
+    apiPatch("bookings", id, { status: "Cancelled", cancelledAt: new Date().toISOString() })
       .then(() => apiCreate("logs", addLog("Booking", "Booking cancelled", id)))
       .catch((e) => toast(e.message || "Delete failed"));
+    if (booking) booking.status = "Cancelled";
     save();
   }
 }
+function rescheduleBooking(id) { bookingModal(id); }
 function updateAudit(i, status) {
   db.audits[i].status = status;
   apiPatch("audits", db.audits[i].asset, { status })
@@ -898,6 +902,7 @@ Object.assign(window, {
   editMaintenance,
   moveCard,
   deleteBooking,
+  rescheduleBooking,
   updateAudit,
   updateAuditNote,
   decideTransfer,
