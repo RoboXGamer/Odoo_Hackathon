@@ -3,15 +3,15 @@ const { title = 'Dashboard' } = Astro.props;
 ---
 
 <div style="display:flex;align-items:center;gap:12px">
-  <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open menu">Menu</button>
+  <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open menu"><i data-lucide="menu"></i></button>
   <div class="top-title">
     <h1 id="topTitle">{title}</h1>
     <p>Central command for your organization's assets</p>
   </div>
 </div>
 <div class="top-actions">
-  <button class="icon-btn" id="searchToggle" type="button">Search</button>
-  <a class="icon-btn" href="/notifications">Alerts<i class="dot"></i></a>
-  <button class="btn primary" onclick="openModal('Register asset')"><span>Add asset</span><b>+</b></button>
+  <button class="icon-btn" id="searchToggle" type="button" aria-label="Search"><i data-lucide="search"></i></button>
+  <a class="icon-btn" href="/notifications" aria-label="Notifications"><i data-lucide="bell"></i><i class="dot"></i></a>
+  <button class="btn primary" onclick="openModal('Register asset')"><i data-lucide="plus"></i><span>Add asset</span></button>
   <button class="btn" id="logoutBtn" type="button">Sign out</button>
 </div>

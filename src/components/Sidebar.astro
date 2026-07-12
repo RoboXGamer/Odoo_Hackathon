@@ -7,15 +7,15 @@ const initials = String(userName)
   .slice(0, 2)
   .toUpperCase();
 const links = [
-  ['/', 'Dashboard'],
-  ['/organization', 'Organization'],
-  ['/assets', 'Assets'],
-  ['/allocation', 'Allocation'],
-  ['/booking', 'Booking'],
-  ['/maintenance', 'Maintenance'],
-  ['/audit', 'Audit'],
-  ['/reports', 'Reports'],
-  ['/notifications', 'Notifications'],
+  ['/', 'Dashboard', 'layout-dashboard'],
+  ['/organization', 'Organization', 'building-2'],
+  ['/assets', 'Assets', 'boxes'],
+  ['/allocation', 'Allocation', 'arrow-left-right'],
+  ['/booking', 'Booking', 'calendar-days'],
+  ['/maintenance', 'Maintenance', 'wrench'],
+  ['/audit', 'Audit', 'clipboard-check'],
+  ['/reports', 'Reports', 'chart-column'],
+  ['/notifications', 'Notifications', 'bell'],
 ];
 ---
 
@@ -24,8 +24,11 @@ const links = [
 </div>
 <div class="nav-label">Workspace</div>
 <nav class="nav" id="nav">
-  {links.map(([href, label]) => (
-    <a class:list={{ active: activePath === href }} href={href}>{label}</a>
+  {links.map(([href, label, icon]) => (
+    <a class:list={{ active: activePath === href }} href={href}>
+      <i data-lucide={icon}></i>
+      <span>{label}</span>
+    </a>
   ))}
 </nav>
 <div class="sidebar-footer">
