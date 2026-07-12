@@ -722,11 +722,14 @@ function moveCard(id, index) {
 function bookingModal(id) {
   const current = db.bookings.find((x) => x.id === id) || {};
   const resources = (db.bookingResources?.length ? db.bookingResources.map((x) => x.name) : [...new Set(db.bookings.map((x) => x.resource))]);
+  const today = new Date().toISOString().slice(0, 10);
   setModal(
     id ? "Reschedule booking" : "Book a resource",
-    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources, current.resource)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required value="${esc(current.title || "")}"></div><div class="field"><label>Requester</label><input name="requester" value="${esc(current.requester || "")}"></div><div class="field"><label>Department</label><input name="department" value="${esc(current.department || "")}"></div><div class="field"><label>Date</label><input type="date" name="date" required value="${current.date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Reminder</label><input type="datetime-local" name="reminderAt" value="${esc(current.reminderAt || "")}"></div><div class="field"><label>Start</label><input type="time" name="start" required value="${current.start || "10:00"}"></div><div class="field"><label>End</label><input type="time" name="end" required value="${current.end || "11:00"}"></div></div>`,
+    `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource" required>${optionList(resources, current.resource)}</select></div><div class="field full"><label>Purpose *</label><input name="title" required value="${esc(current.title || "")}"></div><div class="field"><label>Requester</label><input name="requester" value="${esc(current.requester || "")}"></div><div class="field"><label>Department</label><input name="department" value="${esc(current.department || "")}"></div><div class="field"><label>Date</label><input type="date" name="date" min="${today}" required value="${current.date || today}"></div><div class="field"><label>Reminder</label><input type="datetime-local" name="reminderAt" value="${esc(current.reminderAt || "")}"></div><div class="field"><label>Start</label><input type="time" name="start" required value="${current.start || "10:00"}"></div><div class="field"><label>End</label><input type="time" name="end" required value="${current.end || "11:00"}"></div></div>`,
     async (fd) => {
       if (fd.end <= fd.start) throw Error("End time must be after start time.");
+      const startAt = new Date(`${fd.date}T${fd.start}:00`);
+      if (startAt <= new Date()) throw Error("Bookings must start in the future. Choose a later time slot.");
       if (
         db.bookings.some(
           (b) =>
