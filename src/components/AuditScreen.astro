@@ -1,0 +1,35 @@
+<template id="audit-template">
+  <section class="screen" data-title="Asset audit">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Q3 audit cycle</div>
+        <h2>Engineering asset audit</h2>
+        <p>1–15 July · Auditors: A. Rao and S. Iqbal</p>
+      </div>
+      <button class="btn success" onclick="toast('Audit cycle closed')">Close audit cycle</button>
+    </div>
+    <div class="audit-summary">
+      <div class="mini"><small>Assets checked</small><strong>28 / 30</strong></div>
+      <div class="mini"><small>Verified</small><strong style="color:#047857">28</strong></div>
+      <div class="mini"><small>Flagged</small><strong style="color:#be123c">2</strong></div>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Asset</th><th>Expected location</th><th>Verification</th><th>Auditor note</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>AF-003 Dell laptop</b></td><td>Desk E12</td><td><span class="badge">Verified</span></td><td>Serial matched</td></tr>
+            <tr><td><b>AF-9921 Office chair</b></td><td>Desk E14</td><td><span class="badge red">Missing</span></td><td>Not found at desk</td></tr>
+            <tr><td><b>AF-9838 Monitor</b></td><td>Desk E15</td><td><span class="badge amber">Damaged</span></td><td>Panel crack</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alert" style="margin:18px 0 0;background:#fffbeb;border-color:#fde68a;color:#92400e">
+        <span>⚠ 2 discrepancies flagged. A report was generated automatically.</span>
+        <button class="btn">View report</button>
+      </div>
+    </div>
+  </section>
+</template>

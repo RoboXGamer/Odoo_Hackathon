@@ -1,0 +1,21 @@
+<template id="notifications-template">
+  <section class="screen" data-title="Activity &amp; notifications">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Activity center</div>
+        <h2>Notifications</h2>
+        <p>Approvals, alerts, bookings, and asset changes in one feed.</p>
+      </div>
+      <button class="btn" onclick="toast('All notifications marked as read')">✓ Mark all read</button>
+    </div>
+    <div class="panel">
+      <div class="filters">
+        <button class="tab active">All</button>
+        <button class="tab">Alerts</button>
+        <button class="tab">Approvals</button>
+        <button class="tab">Bookings</button>
+      </div>
+      <div id="logs"></div>
+    </div>
+  </section>
+</template>
