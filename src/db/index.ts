@@ -1,10 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-sqlite';
 import { count } from 'drizzle-orm';
 import * as tables from './schema';
 import { seedData } from './seed';
+import { type ResourceName, parseCreate, parseUpdate } from './validators';
 
 const dbPath = resolve(process.env.DATABASE_PATH ?? './data/assetflow.sqlite');
 mkdirSync(dirname(dbPath), { recursive: true });
@@ -162,6 +164,7 @@ export async function getAppState() {
     audits: await db.select().from(tables.audits),
     transfers: await db.select().from(tables.transfers),
     logs: await db.select({
+      id: tables.logs.id,
       type: tables.logs.type,
       title: tables.logs.title,
       detail: tables.logs.detail,
@@ -171,25 +174,54 @@ export async function getAppState() {
   };
 }
 
-export async function replaceAppState(state: Record<string, any[]>) {
-  await ensureDb();
-  await db.delete(tables.assets);
-  await db.delete(tables.departments);
-  await db.delete(tables.categories);
-  await db.delete(tables.employees);
-  await db.delete(tables.maintenance);
-  await db.delete(tables.bookings);
-  await db.delete(tables.audits);
-  await db.delete(tables.transfers);
-  await db.delete(tables.logs);
+const resourceConfig = {
+  assets: { table: tables.assets, idColumn: tables.assets.id },
+  departments: { table: tables.departments, idColumn: tables.departments.id },
+  categories: { table: tables.categories, idColumn: tables.categories.id },
+  employees: { table: tables.employees, idColumn: tables.employees.id },
+  maintenance: { table: tables.maintenance, idColumn: tables.maintenance.id },
+  bookings: { table: tables.bookings, idColumn: tables.bookings.id },
+  audits: { table: tables.audits, idColumn: tables.audits.asset },
+  transfers: { table: tables.transfers, idColumn: tables.transfers.id },
+  logs: { table: tables.logs, idColumn: tables.logs.id },
+} as const;
 
-  if (state.assets?.length) await db.insert(tables.assets).values(state.assets as any);
-  if (state.departments?.length) await db.insert(tables.departments).values(state.departments as any);
-  if (state.categories?.length) await db.insert(tables.categories).values(state.categories as any);
-  if (state.employees?.length) await db.insert(tables.employees).values(state.employees as any);
-  if (state.maintenance?.length) await db.insert(tables.maintenance).values(state.maintenance as any);
-  if (state.bookings?.length) await db.insert(tables.bookings).values(state.bookings as any);
-  if (state.audits?.length) await db.insert(tables.audits).values(state.audits as any);
-  if (state.transfers?.length) await db.insert(tables.transfers).values(state.transfers as any);
-  if (state.logs?.length) await db.insert(tables.logs).values(state.logs as any);
+export async function listResource(resource: ResourceName) {
+  await ensureDb();
+  return db.select().from(resourceConfig[resource].table as any);
+}
+
+export async function getResourceItem(resource: ResourceName, id: string) {
+  await ensureDb();
+  const config = resourceConfig[resource];
+  const [item] = await db.select().from(config.table as any).where(eq(config.idColumn as any, id));
+  return item ?? null;
+}
+
+export async function createResourceItem(resource: ResourceName, payload: unknown) {
+  await ensureDb();
+  const config = resourceConfig[resource];
+  const values = parseCreate(resource, payload);
+  await db.insert(config.table as any).values(values as any);
+  return getResourceItem(resource, String((values as any).id ?? (values as any).asset));
+}
+
+export async function updateResourceItem(resource: ResourceName, id: string, payload: unknown) {
+  await ensureDb();
+  const config = resourceConfig[resource];
+  const values = parseUpdate(resource, payload);
+  if (Object.keys(values).length === 0) return getResourceItem(resource, id);
+
+  await db.update(config.table as any).set(values as any).where(eq(config.idColumn as any, id));
+  return getResourceItem(resource, id);
+}
+
+export async function deleteResourceItem(resource: ResourceName, id: string) {
+  await ensureDb();
+  const config = resourceConfig[resource];
+  const existing = await getResourceItem(resource, id);
+  if (!existing) return null;
+
+  await db.delete(config.table as any).where(eq(config.idColumn as any, id));
+  return existing;
 }

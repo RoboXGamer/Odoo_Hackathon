@@ -249,25 +249,22 @@ async function load() {
     return clone(seed);
   }
 }
-async function persist() {
-  try {
-    const res = await fetch("/api/state", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(db),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw Error(data.error || "Save failed");
-    }
-  } catch (e) {
-    toast(e.message || "Save failed");
-  }
-}
 function save() {
   renderAll();
-  persist();
 }
+async function apiRequest(resource, method, body, id) {
+  const res = await fetch(`/api/${resource}${id ? `/${encodeURIComponent(id)}` : ""}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Error(data.error || "Save failed");
+  return data.item ?? data;
+}
+const apiCreate = (resource, body) => apiRequest(resource, "POST", body);
+const apiPatch = (resource, id, body) => apiRequest(resource, "PATCH", body, id);
+const apiDelete = (resource, id) => apiRequest(resource, "DELETE", null, id);
 function uid(p) {
   return p + "-" + Date.now().toString(36).toUpperCase();
 }
@@ -281,7 +278,9 @@ function esc(s = "") {
   );
 }
 function addLog(type, title, detail) {
-  db.logs.unshift({ type, title, detail, time: "Just now", read: false });
+  const log = { type, title, detail, time: "Just now", read: false };
+  db.logs.unshift(log);
+  return log;
 }
 function badge(s) {
   return `<span class="badge ${s === "Allocated" || s === "Verified" || s === "Active" ? "blue" : s === "Maintenance" || s === "Damaged" ? "amber" : s === "Missing" || s === "Inactive" ? "red" : s === "Pending" ? "gray" : ""}">${esc(s)}</span>`;
@@ -415,9 +414,16 @@ function renderKanban() {
         item.status = c.dataset.status;
         if (item.status === "Resolved") {
           const a = db.assets.find((x) => x.id === item.asset);
-          if (a) a.status = "Available";
+          if (a) {
+            a.status = "Available";
+            apiPatch("assets", a.id, { status: "Available" }).catch((e) =>
+              toast(e.message || "Save failed"),
+            );
+          }
         }
-        addLog("Maintenance", `${item.id} moved to ${item.status}`, item.asset);
+        apiPatch("maintenance", item.id, { status: item.status })
+          .then(() => apiCreate("logs", addLog("Maintenance", `${item.id} moved to ${item.status}`, item.asset)))
+          .catch((e) => toast(e.message || "Save failed"));
         save();
       }
       c.classList.remove("drag-over");
@@ -589,11 +595,13 @@ function openModal(title) {
     return setModal(
       title,
       fields.asset,
-      (fd) => {
+      async (fd) => {
         if (db.assets.some((x) => x.id === fd.id))
           throw Error("That asset tag already exists.");
-        db.assets.push({ ...fd, updated: "Just now" });
-        addLog("Allocation", `Asset ${fd.id} registered`, fd.name);
+        const item = { ...fd, updated: "Just now" };
+        db.assets.push(item);
+        await apiCreate("assets", item);
+        await apiCreate("logs", addLog("Allocation", `Asset ${fd.id} registered`, fd.name));
       },
       true,
     );
@@ -604,7 +612,9 @@ function openModal(title) {
   setModal(
     title,
     `<div class="field"><label>Notes</label><textarea name="notes" required placeholder="Add details..."></textarea></div>`,
-    () => addLog("Approval", title, "Submitted"),
+    async () => {
+      await apiCreate("logs", addLog("Approval", title, "Submitted"));
+    },
   );
 }
 function closeModal() {
@@ -621,11 +631,12 @@ function toast(msg) {
     t.style.transform = "translateY(15px)";
   }, 2200);
 }
-document.getElementById("modalForm").onsubmit = (e) => {
+const modalForm = document.getElementById("modalForm");
+if (modalForm) modalForm.onsubmit = async (e) => {
   e.preventDefault();
   const fd = Object.fromEntries(new FormData(e.target));
   try {
-    modalAction?.(fd);
+    await modalAction?.(fd);
     save();
     closeModal();
     toast("Saved successfully");
@@ -650,20 +661,25 @@ function editOrg(type, id) {
     html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
   else
     html = `<div class="form-grid"><div class="field"><label>Name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Email *</label><input name="email" type="email" required value="${esc(item.email || "")}"></div><div class="field"><label>Department</label><select name="department">${db.departments.map((x) => `<option ${x.name === item.department ? "selected" : ""}>${x.name}</option>`).join("")}</select></div><div class="field"><label>Status</label><select name="status"><option>Active</option><option ${item.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div>`;
-  setModal(`${id ? "Edit" : "Add"} ${type}`, html, (fd) => {
-    if (id) Object.assign(item, fd);
-    else
-      db[key].push({
+  setModal(`${id ? "Edit" : "Add"} ${type}`, html, async (fd) => {
+    if (id) {
+      Object.assign(item, fd);
+      await apiPatch(key, id, fd);
+    } else {
+      const created = {
         id: uid(type.slice(0, 3).toUpperCase()),
         ...fd,
         employees: type === "Department" ? 0 : undefined,
         count: type === "Category" ? 0 : undefined,
-      });
-    addLog(
+      };
+      db[key].push(created);
+      await apiCreate(key, created);
+    }
+    await apiCreate("logs", addLog(
       "Approval",
       `${type} ${fd.name} ${id ? "updated" : "created"}`,
       "Organization setup",
-    );
+    ));
   });
 }
 function openAsset(id) {
@@ -681,11 +697,12 @@ function editAsset(id) {
   setModal(
     "Edit asset",
     fields.asset,
-    (fd) => {
+    async (fd) => {
       if (fd.id !== id && db.assets.some((x) => x.id === fd.id))
         throw Error("That asset tag already exists.");
       Object.assign(a, fd, { updated: "Just now" });
-      addLog("Allocation", `${fd.id} updated`, fd.name);
+      await apiPatch("assets", id, { ...fd, updated: "Just now" });
+      await apiCreate("logs", addLog("Allocation", `${fd.id} updated`, fd.name));
     },
     true,
   );
@@ -702,7 +719,9 @@ function editAsset(id) {
 function deleteAsset(id) {
   if (confirm("Delete this asset? This cannot be undone.")) {
     db.assets = db.assets.filter((x) => x.id !== id);
-    addLog("Alert", `Asset ${id} deleted`, "Inventory");
+    apiDelete("assets", id)
+      .then(() => apiCreate("logs", addLog("Alert", `Asset ${id} deleted`, "Inventory")))
+      .catch((e) => toast(e.message || "Delete failed"));
     save();
     closeDrawer();
     toast("Asset deleted");
@@ -713,10 +732,16 @@ function maintenanceModal(id) {
   setModal(
     id ? "Edit maintenance request" : "New maintenance request",
     `<div class="form-grid"><div class="field"><label>Asset tag *</label><input name="asset" required value="${esc(t.asset || "")}"></div><div class="field"><label>Status</label><select name="status">${["Pending", "Approved", "Technician assigned", "In progress", "Resolved"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`)}</select></div><div class="field full"><label>Issue *</label><textarea name="title" required>${esc(t.title || "")}</textarea></div><div class="field full"><label>Assignee</label><input name="assignee" value="${esc(t.assignee || "Unassigned")}"></div></div>`,
-    (fd) => {
-      if (id) Object.assign(t, fd);
-      else db.maintenance.push({ id: uid("MR"), ...fd, date: "Just now" });
-      addLog("Maintenance", `${id || "New request"} ${fd.status}`, fd.asset);
+    async (fd) => {
+      if (id) {
+        Object.assign(t, fd);
+        await apiPatch("maintenance", id, fd);
+      } else {
+        const item = { id: uid("MR"), ...fd, date: "Just now" };
+        db.maintenance.push(item);
+        await apiCreate("maintenance", item);
+      }
+      await apiCreate("logs", addLog("Maintenance", `${id || "New request"} ${fd.status}`, fd.asset));
     },
     true,
   );
@@ -735,14 +760,16 @@ function moveCard(id, index) {
   if (index < 0 || index > 4) return;
   const x = db.maintenance.find((t) => t.id === id);
   x.status = statuses[index];
-  addLog("Maintenance", `${id} moved to ${x.status}`, x.asset);
+  apiPatch("maintenance", id, { status: x.status })
+    .then(() => apiCreate("logs", addLog("Maintenance", `${id} moved to ${x.status}`, x.asset)))
+    .catch((e) => toast(e.message || "Save failed"));
   save();
 }
 function bookingModal() {
   setModal(
     "Book a resource",
     `<div class="form-grid"><div class="field full"><label>Resource</label><select name="resource"><option>Conference Room B2</option><option>Projector AF-0062</option><option>Training Room A1</option></select></div><div class="field full"><label>Purpose *</label><input name="title" required></div><div class="field"><label>Date</label><input type="date" name="date" required value="2026-07-07"></div><div></div><div class="field"><label>Start</label><input type="time" name="start" required value="10:00"></div><div class="field"><label>End</label><input type="time" name="end" required value="11:00"></div></div>`,
-    (fd) => {
+    async (fd) => {
       if (fd.end <= fd.start) throw Error("End time must be after start time.");
       if (
         db.bookings.some(
@@ -756,12 +783,14 @@ function bookingModal() {
         throw Error(
           "This slot overlaps with an existing booking. Choose another time.",
         );
-      db.bookings.push({ id: uid("BK"), ...fd });
-      addLog(
+      const item = { id: uid("BK"), ...fd };
+      db.bookings.push(item);
+      await apiCreate("bookings", item);
+      await apiCreate("logs", addLog(
         "Booking",
         `Booking confirmed: ${fd.resource}`,
-        `${fd.date} · ${fd.start}–${fd.end}`,
-      );
+        `${fd.date} - ${fd.start}-${fd.end}`,
+      ));
     },
     true,
   );
@@ -769,17 +798,24 @@ function bookingModal() {
 function deleteBooking(id) {
   if (confirm("Cancel this booking?")) {
     db.bookings = db.bookings.filter((x) => x.id !== id);
-    addLog("Booking", "Booking cancelled", id);
+    apiDelete("bookings", id)
+      .then(() => apiCreate("logs", addLog("Booking", "Booking cancelled", id)))
+      .catch((e) => toast(e.message || "Delete failed"));
     save();
   }
 }
 function updateAudit(i, status) {
   db.audits[i].status = status;
-  addLog("Alert", `${db.audits[i].asset} marked ${status}`, "Q3 audit");
+  apiPatch("audits", db.audits[i].asset, { status })
+    .then(() => apiCreate("logs", addLog("Alert", `${db.audits[i].asset} marked ${status}`, "Q3 audit")))
+    .catch((e) => toast(e.message || "Save failed"));
   save();
 }
 function updateAuditNote(i, note) {
   db.audits[i].note = note;
+  apiPatch("audits", db.audits[i].asset, { note }).catch((e) =>
+    toast(e.message || "Save failed"),
+  );
   save();
 }
 function submitTransfer() {
@@ -789,8 +825,11 @@ function submitTransfer() {
     reason = sec.querySelector("textarea").value.trim();
   if (to === "Select employee..." || !reason)
     return toast("Choose an employee and enter a reason");
-  db.transfers.push({ id: uid("TR"), asset, to, reason, status: "Pending" });
-  addLog("Transfer", `Transfer requested: ${asset}`, `To ${to}`);
+  const item = { id: uid("TR"), asset, to, reason, status: "Pending" };
+  db.transfers.push(item);
+  apiCreate("transfers", item)
+    .then(() => apiCreate("logs", addLog("Transfer", `Transfer requested: ${asset}`, `To ${to}`)))
+    .catch((e) => toast(e.message || "Save failed"));
   save();
   sec.querySelector("textarea").value = "";
   toast("Transfer request submitted");
@@ -836,26 +875,30 @@ bind('[data-title="Asset audit"] .alert .btn', () => {
   showScreen("notifications");
 });
 bind('[data-title="Asset audit"] .page-head .success', () => {
-  addLog(
+  apiCreate("logs", addLog(
     "Approval",
     "Q3 audit cycle closed",
     `${db.audits.filter((x) => x.status !== "Verified").length} discrepancies`,
-  );
+  )).catch((e) => toast(e.message || "Save failed"));
   save();
   toast("Audit cycle closed");
 });
 bind('[data-title="Activity & notifications"] .page-head .btn', () => {
   db.logs.forEach((x) => (x.read = true));
+  db.logs.forEach((x) => {
+    if (x.id) apiPatch("logs", x.id, { read: true }).catch((e) => toast(e.message || "Save failed"));
+  });
   save();
   toast("All notifications marked as read");
 });
 const searchBtn = document.getElementById("searchToggle");
 if (searchBtn)
   searchBtn.onclick = () => {
-    document.getElementById("globalSearch").classList.toggle("open");
-    setTimeout(() => document.getElementById("globalSearchInput").focus(), 20);
+    document.getElementById("globalSearch")?.classList.toggle("open");
+    setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 20);
   };
-document.getElementById("globalSearchInput").oninput = (e) => {
+const globalSearchInput = document.getElementById("globalSearchInput");
+if (globalSearchInput) globalSearchInput.oninput = (e) => {
   const q = e.target.value.toLowerCase(),
     items = [
       ...db.assets.map((x) => ({
@@ -871,7 +914,9 @@ document.getElementById("globalSearchInput").oninput = (e) => {
     ]
       .filter((x) => (x.title + x.sub).toLowerCase().includes(q))
       .slice(0, 7);
-  document.getElementById("globalSearchList").innerHTML =
+  const globalSearchList = document.getElementById("globalSearchList");
+  if (!globalSearchList) return;
+  globalSearchList.innerHTML =
     items
       .map(
         (x) =>
@@ -896,15 +941,49 @@ Object.assign(window, {
   updateAuditNote,
 });
 createIcons({ icons });
-document.getElementById("menuBtn").onclick = () => {
-  document.getElementById("sidebar").classList.add("open");
-  document.getElementById("overlay").classList.add("show");
+const appShell = document.querySelector(".app");
+const sidebar = document.getElementById("sidebar");
+const overlay = document.getElementById("overlay");
+const menuBtn = document.getElementById("menuBtn");
+const sidebarStorageKey = "assetflow:sidebar-collapsed";
+const isMobileNav = () => window.matchMedia("(max-width: 780px)").matches;
+const setDesktopSidebarState = (collapsed) => {
+  appShell?.classList.toggle("sidebar-collapsed", collapsed);
+  menuBtn?.setAttribute("aria-expanded", String(!collapsed));
 };
-document.getElementById("overlay").onclick = () => {
-  document.getElementById("sidebar").classList.remove("open");
-  document.getElementById("overlay").classList.remove("show");
+const closeMobileSidebar = () => {
+  sidebar?.classList.remove("open");
+  overlay?.classList.remove("show");
+  menuBtn?.setAttribute("aria-expanded", "false");
 };
-document.getElementById("logoutBtn").onclick = async () => {
+if (!isMobileNav()) {
+  setDesktopSidebarState(localStorage.getItem(sidebarStorageKey) === "true");
+}
+if (menuBtn) {
+  menuBtn.onclick = () => {
+    if (isMobileNav()) {
+      const willOpen = !sidebar?.classList.contains("open");
+      sidebar?.classList.toggle("open", willOpen);
+      overlay?.classList.toggle("show", willOpen);
+      menuBtn.setAttribute("aria-expanded", String(willOpen));
+      return;
+    }
+
+    const collapsed = !appShell?.classList.contains("sidebar-collapsed");
+    setDesktopSidebarState(collapsed);
+    localStorage.setItem(sidebarStorageKey, String(collapsed));
+    closeMobileSidebar();
+  };
+}
+overlay?.addEventListener("click", closeMobileSidebar);
+window.addEventListener("resize", () => {
+  if (!isMobileNav()) {
+    closeMobileSidebar();
+    setDesktopSidebarState(localStorage.getItem(sidebarStorageKey) === "true");
+  }
+});
+const logoutBtn = document.getElementById("logoutBtn");
+if (logoutBtn) logoutBtn.onclick = async () => {
   const { signOut } = await import("../lib/auth-client");
   await signOut();
   location.href = "/login";
@@ -913,7 +992,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
     closeDrawer();
-    document.getElementById("globalSearch").classList.remove("open");
+    document.getElementById("globalSearch")?.classList.remove("open");
+    closeMobileSidebar();
   }
 });
 load().then((data) => {
