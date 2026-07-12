@@ -290,8 +290,9 @@ function renderAllocation() {
   }
   const history = document.getElementById("allocationHistory");
   if (history) {
+    const records = (db.allocations || []).filter((x) => x.asset === selectedAsset?.id);
     history.innerHTML = selectedAsset
-      ? `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`
+      ? (records.map((x) => `<div class="history-row"><span class="history-line"></span><div><b>${esc(x.holderType)}: ${esc(x.holder)}</b><small>${esc(x.allocatedAt)}${x.expectedReturn ? ` · Expected ${esc(x.expectedReturn)}` : ""} · ${esc(x.status)}</small></div></div>`).join("") || `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`)
       : '<div class="empty"><b>No asset selected</b>Choose an asset to view custody.</div>';
   }
 }
@@ -514,6 +515,16 @@ function openModal(title) {
   if (title === "Add category") return editOrg("Category");
   if (title === "Add employee") return editOrg("Employee");
   if (title === "Book a resource") return bookingModal();
+  if (title === "Allocate asset") {
+    const available = db.assets.filter((x) => x.status === "Available" && !x.shared);
+    return setModal(title, `<div class="form-grid"><div class="field full"><label>Available asset</label><select name="asset" required>${available.map((x) => `<option value="${esc(x.id)}">${esc(x.id)} - ${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>Holder type</label><select name="holderType"><option>Employee</option><option>Department</option></select></div><div class="field"><label>Holder</label><input name="holder" required list="allocationHolders"><datalist id="allocationHolders">${[...db.employees.map((x) => x.name), ...db.departments.map((x) => x.name)].map((x) => `<option value="${esc(x)}">`).join("")}</datalist></div><div class="field full"><label>Expected return</label><input type="date" name="expectedReturn"></div></div>`, async (fd) => {
+      const item = await apiCreate("allocations", { id: uid("AL"), ...fd, allocatedAt: new Date().toISOString(), status: "Active" });
+      db.allocations.push(item);
+      const asset = db.assets.find((x) => x.id === fd.asset);
+      if (asset) Object.assign(asset, { status: "Allocated", owner: fd.holderType === "Employee" ? fd.holder : "-", department: fd.holderType === "Department" ? fd.holder : asset.department });
+      await apiCreate("logs", addLog("Allocation", `${fd.asset} allocated`, `${fd.holderType}: ${fd.holder}`));
+    }, true);
+  }
   if (title === "Maintenance request" || title === "Raise requests")
     return maintenanceModal();
   setModal(
