@@ -1,0 +1,69 @@
+---
+const { userName = 'there' } = Astro.props;
+const firstName = String(userName).trim().split(/\s+/)[0] || 'there';
+---
+
+  <section class="screen active" data-title="Dashboard">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Sunday, 12 July</div>
+        <h2>Good morning, {firstName}</h2>
+        <p>Here's what's happening across your asset operations today.</p>
+      </div>
+      <button class="btn"><i data-lucide="download"></i>Export overview</button>
+    </div>
+    <div class="grid stats">
+      <div class="stat" style="--accent:#635bff">
+        <div class="stat-top"><span>Total assets</span><span class="stat-icon"><i data-lucide="boxes"></i></span></div>
+        <strong>0</strong>
+        <span class="trend">Loaded from inventory</span>
+      </div>
+      <div class="stat" style="--accent:#14b8a6">
+        <div class="stat-top"><span>Allocated</span><span class="stat-icon"><i data-lucide="trending-up"></i></span></div>
+        <strong>0</strong>
+        <span class="trend neutral">Current utilization</span>
+      </div>
+      <div class="stat" style="--accent:#3b82f6">
+        <div class="stat-top"><span>Available</span><span class="stat-icon"><i data-lucide="circle-check"></i></span></div>
+        <strong>0</strong>
+        <span class="trend">Ready assets</span>
+      </div>
+      <div class="stat" style="--accent:#f59e0b">
+        <div class="stat-top"><span>Active bookings</span><span class="stat-icon"><i data-lucide="calendar-days"></i></span></div>
+        <strong>0</strong>
+        <span class="trend neutral">Scheduled bookings</span>
+      </div>
+    </div>
+    <div class="alert">
+      <span id="dashboardAlertText">No urgent alerts.</span>
+      <button class="btn danger" onclick="showScreen('notifications')">Review now</button>
+    </div>
+    <div class="grid quick">
+      <button class="btn" onclick="openModal('Register asset')"><i data-lucide="plus"></i>Register asset</button>
+      <button class="btn" onclick="showScreen('booking')"><i data-lucide="calendar-plus"></i>Book resource</button>
+      <button class="btn" onclick="showScreen('maintenance')"><i data-lucide="wrench"></i>Raise request</button>
+    </div>
+    <div class="grid dash-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Recent activity</h3>
+            <div class="panel-sub">Latest movements across all departments</div>
+          </div>
+          <button class="btn" onclick="showScreen('notifications')">View all</button>
+        </div>
+        <div class="activity" id="activityList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Asset utilization</h3>
+            <div class="panel-sub">Current portfolio health</div>
+          </div>
+        </div>
+        <div class="ring-wrap"><div class="ring"><strong id="utilizationPercent">0%</strong></div></div>
+        <div class="legend" id="utilizationLegend"></div>
+      </div>
+    </div>
+  </section>
+

@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <main class="auth-shell">
+    <section class="auth-panel">
+      <div class="brand auth-brand">
+        <span class="brand-mark">A</span>AssetFlow
+      </div>
+      <p class="eyebrow">MVP onboarding</p>
+      <h1>Create account</h1>
+      <p class="auth-copy">Create the first workspace user. New MVP accounts default to admin access.</p>
+
+      <form class="auth-form" id="signupForm">
+        <div class="field">
+          <label>Name</label>
+          <input name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="modal-error" id="authError"></div>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+
+      <p class="auth-link">Already have access? <a href="/login">Sign in</a></p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('signupForm') as HTMLFormElement;
+    const errorBox = document.getElementById('authError') as HTMLElement;
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      errorBox.classList.remove('show');
+      const fd = Object.fromEntries(new FormData(form));
+      const { signUp } = await import('../lib/auth-client');
+      const result = await signUp.email({
+        name: String(fd.name),
+        email: String(fd.email),
+        password: String(fd.password),
+      });
+      if (result?.error) {
+        errorBox.textContent = result.error.message || 'Unable to create account.';
+        errorBox.classList.add('show');
+        return;
+      }
+      location.href = '/';
+    };
+  </script>
+</Layout>

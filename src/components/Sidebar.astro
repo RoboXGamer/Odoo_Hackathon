@@ -1,0 +1,39 @@
+---
+const { userName = 'User', userRole = 'Member', userEmail = '', activePath = '/' } = Astro.props;
+const initials = String(userName)
+  .split(' ')
+  .map((part) => part[0])
+  .join('')
+  .slice(0, 2)
+  .toUpperCase();
+const links = [
+  ['/', 'Dashboard', 'layout-dashboard'],
+  ['/organization', 'Organization', 'building-2'],
+  ['/assets', 'Assets', 'boxes'],
+  ['/allocation', 'Allocation', 'arrow-left-right'],
+  ['/booking', 'Booking', 'calendar-days'],
+  ['/maintenance', 'Maintenance', 'wrench'],
+  ['/audit', 'Audit', 'clipboard-check'],
+  ['/reports', 'Reports', 'chart-column'],
+  ['/notifications', 'Notifications', 'bell'],
+];
+---
+
+<div class="brand">
+  <span class="brand-mark">A</span>AssetFlow
+</div>
+<div class="nav-label">Workspace</div>
+<nav class="nav" id="nav">
+  {links.map(([href, label, icon]) => (
+    <a class:list={{ active: activePath === href }} href={href}>
+      <i data-lucide={icon}></i>
+      <span>{label}</span>
+    </a>
+  ))}
+</nav>
+<div class="sidebar-footer">
+  <div class="user">
+    <div class="avatar">{initials}</div>
+    <div><b>{userName}</b><small>{userEmail || userRole}</small></div>
+  </div>
+</div>

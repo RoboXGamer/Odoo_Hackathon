@@ -1,0 +1,34 @@
+  <section class="screen active" data-title="Organization setup">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Admin workspace</div>
+        <h2>Organization setup</h2>
+        <p>Manage departments, categories, and employees from one place.</p>
+      </div>
+      <button class="btn primary" onclick="openModal('Add department')">＋ Add department</button>
+    </div>
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab active">Departments</button>
+        <button class="tab">Categories</button>
+        <button class="tab">Employees</button>
+      </div>
+      <div class="toolbar">
+        <div class="search">
+          <span style="position:absolute;left:13px;top:10px">⌕</span>
+          <input placeholder="Search departments...">
+        </div>
+        <button class="btn">Filter</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Department</th><th>Head</th><th>Parent department</th><th>Employees</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+

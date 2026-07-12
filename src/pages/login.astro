@@ -1,0 +1,53 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <main class="auth-shell">
+    <section class="auth-panel">
+      <div class="brand auth-brand">
+        <span class="brand-mark">A</span>AssetFlow
+      </div>
+      <p class="eyebrow">Secure workspace</p>
+      <h1>Sign in</h1>
+      <p class="auth-copy">Access asset operations, audits, bookings, and maintenance workflows.</p>
+
+      <form class="auth-form" id="loginForm">
+        <div class="field">
+          <label>Email</label>
+          <input name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="modal-error" id="authError"></div>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+
+      <p class="auth-link">Need demo access? <a href="/signup">Create an account</a></p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('loginForm') as HTMLFormElement;
+    const errorBox = document.getElementById('authError') as HTMLElement;
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      errorBox.classList.remove('show');
+      const fd = Object.fromEntries(new FormData(form));
+      const { signIn } = await import('../lib/auth-client');
+      const result = await signIn.email({
+        email: String(fd.email),
+        password: String(fd.password),
+      });
+      if (result?.error) {
+        errorBox.textContent = result.error.message || 'Unable to sign in.';
+        errorBox.classList.add('show');
+        return;
+      }
+      location.href = '/';
+    };
+  </script>
+</Layout>

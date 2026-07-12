@@ -1,0 +1,38 @@
+<section class="screen active" data-title="Allocation &amp; transfer">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Asset custody</div>
+      <h2>Allocation &amp; transfer</h2>
+      <p>Move equipment safely with clear ownership history.</p>
+    </div>
+  </div>
+  <div class="panel" style="max-width:850px">
+    <div class="form-grid">
+      <div class="field full">
+        <label>Asset</label>
+        <select id="transferAsset"></select>
+      </div>
+    </div>
+    <div class="warning">
+      <b>!</b>
+      <div>
+        <b id="transferWarningTitle">Select an asset to review custody.</b><br>
+        <small>Direct re-allocation is blocked. Submit a transfer request below.</small>
+      </div>
+    </div>
+    <h3 style="margin:19px 0 14px">Transfer request</h3>
+    <div class="form-grid">
+      <div class="field"><label>From</label><input id="transferFrom" disabled /></div>
+      <div class="field">
+        <label>Transfer to</label>
+        <select id="transferEmployee"></select>
+      </div>
+      <div class="field full"><label>Reason</label><textarea placeholder="Add a clear reason for this transfer..."></textarea></div>
+    </div>
+    <button class="btn primary" style="margin-top:14px">Submit request</button>
+    <div class="history">
+      <h3>Allocation history</h3>
+      <div id="allocationHistory"></div>
+    </div>
+  </div>
+</section>
