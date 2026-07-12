@@ -103,7 +103,7 @@ function renderAssets() {
   if (!body) return;
   let rows = db.assets.filter(
     (a) =>
-      (a.name + a.id + a.location)
+      (a.name + a.id + a.location + (a.serialNumber || "") + (a.qrCode || ""))
         .toLowerCase()
         .includes(assetFilters.q.toLowerCase()) &&
       (assetFilters.category === "All categories" ||
@@ -427,7 +427,7 @@ function bindControls() {
       "<option>All categories</option>" +
       db.categories.map((x) => `<option>${esc(x.name)}</option>`).join("");
     st.innerHTML =
-      "<option>All statuses</option><option>Available</option><option>Allocated</option><option>Maintenance</option><option>Retired</option>";
+      "<option>All statuses</option><option>Available</option><option>Allocated</option><option>Reserved</option><option>Under Maintenance</option><option>Lost</option><option>Retired</option><option>Disposed</option>";
     dep.innerHTML =
       "<option>All departments</option>" +
       db.departments
@@ -485,7 +485,8 @@ function optionList(items, selected = "") {
 function assetForm(item = {}) {
   const categories = db.categories.map((x) => x.name);
   const departments = db.departments.map((x) => x.name);
-  return `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Asset tag *</label><input name="id" required placeholder="AF-0000" value="${esc(item.id || "")}"></div><div class="field"><label>Category</label><select name="category" required>${optionList(categories, item.category)}</select></div><div class="field"><label>Status</label><select name="status"><option ${item.status === "Available" ? "selected" : ""}>Available</option><option ${item.status === "Allocated" ? "selected" : ""}>Allocated</option><option ${item.status === "Maintenance" ? "selected" : ""}>Maintenance</option><option ${item.status === "Retired" ? "selected" : ""}>Retired</option></select></div><div class="field"><label>Department</label><select name="department" required>${optionList(departments, item.department)}</select></div><div class="field"><label>Location *</label><input name="location" required value="${esc(item.location || "")}"></div><div class="field full"><label>Assigned owner</label><input name="owner" placeholder="Optional" value="${esc(item.owner || "")}"></div></div>`;
+  const statuses = ["Available", "Allocated", "Reserved", "Under Maintenance", "Lost", "Retired", "Disposed"];
+  return `<div class="form-grid"><div class="field"><label>Asset name *</label><input name="name" required value="${esc(item.name || "")}"></div><div class="field"><label>Asset tag</label><input name="id" placeholder="Generated automatically" value="${esc(item.id || "")}" ${item.id ? "readonly" : ""}></div><div class="field"><label>Serial number</label><input name="serialNumber" value="${esc(item.serialNumber || "")}"></div><div class="field"><label>QR identifier</label><input name="qrCode" placeholder="Defaults to asset tag" value="${esc(item.qrCode || "")}"></div><div class="field"><label>Category</label><select name="category" required>${optionList(categories, item.category)}</select></div><div class="field"><label>Status</label><select name="status">${optionList(statuses, item.status || "Available")}</select></div><div class="field"><label>Condition</label><select name="condition">${optionList(["New", "Good", "Fair", "Damaged"], item.condition || "Good")}</select></div><div class="field"><label>Acquisition date</label><input type="date" name="acquisitionDate" value="${esc(item.acquisitionDate || "")}"></div><div class="field"><label>Acquisition cost</label><input type="number" min="0" step="0.01" name="acquisitionCost" value="${esc(item.acquisitionCost || 0)}"></div><div class="field"><label>Department</label><select name="department" required>${optionList(departments, item.department || "Unassigned")}</select></div><div class="field"><label>Location *</label><input name="location" required value="${esc(item.location || "")}"></div><div class="field"><label>Shared/bookable</label><select name="shared"><option value="false">No</option><option value="true" ${item.shared ? "selected" : ""}>Yes</option></select></div><div class="field full"><label>Attachment references</label><input name="attachments" placeholder="Photo or document URLs" value="${esc(item.attachments || "")}"></div><input type="hidden" name="owner" value="${esc(item.owner || "-")}"></div>`;
 }function setModal(title, html, action, wide = false) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = html;
@@ -500,12 +501,11 @@ function openModal(title) {
       title,
       assetForm(),
       async (fd) => {
-        if (db.assets.some((x) => x.id === fd.id))
+        if (fd.id && db.assets.some((x) => x.id === fd.id))
           throw Error("That asset tag already exists.");
-        const item = { ...fd, updated: "Just now" };
+        const item = await apiCreate("assets", { ...fd, id: fd.id || undefined, updated: "Just now" });
         db.assets.push(item);
-        await apiCreate("assets", item);
-        await apiCreate("logs", addLog("Allocation", `Asset ${fd.id} registered`, fd.name));
+        await apiCreate("logs", addLog("Allocation", `Asset ${item.id} registered`, fd.name));
       },
       true,
     );
@@ -608,7 +608,7 @@ function openAsset(id) {
   const a = db.assets.find((x) => x.id === id);
   if (!a) return;
   document.getElementById("drawerBody").innerHTML =
-    `<div class="detail-hero"><span class="detail-icon">▣</span><div><h2 style="margin:0 0 5px">${esc(a.name)}</h2>${badge(a.status)}</div></div><div class="detail-grid"><div class="detail-item"><small>Asset tag</small><b>${a.id}</b></div><div class="detail-item"><small>Category</small><b>${esc(a.category)}</b></div><div class="detail-item"><small>Department</small><b>${esc(a.department)}</b></div><div class="detail-item"><small>Location</small><b>${esc(a.location)}</b></div><div class="detail-item"><small>Assigned owner</small><b>${esc(a.owner)}</b></div><div class="detail-item"><small>Last updated</small><b>${esc(a.updated)}</b></div></div><div style="display:flex;gap:8px;margin-top:20px"><button class="btn primary" onclick="editAsset('${id}')">Edit asset</button><button class="btn danger" onclick="deleteAsset('${id}')">Delete</button></div>`;
+    `<div class="detail-hero"><span class="detail-icon">▣</span><div><h2 style="margin:0 0 5px">${esc(a.name)}</h2>${badge(a.status)}</div></div><div class="detail-grid"><div class="detail-item"><small>Asset tag</small><b>${a.id}</b></div><div class="detail-item"><small>Serial / QR</small><b>${esc(a.serialNumber || "-")} / ${esc(a.qrCode || a.id)}</b></div><div class="detail-item"><small>Category</small><b>${esc(a.category)}</b></div><div class="detail-item"><small>Condition</small><b>${esc(a.condition || "Good")}</b></div><div class="detail-item"><small>Department</small><b>${esc(a.department)}</b></div><div class="detail-item"><small>Location</small><b>${esc(a.location)}</b></div><div class="detail-item"><small>Assigned owner</small><b>${esc(a.owner)}</b></div><div class="detail-item"><small>Acquisition</small><b>${esc(a.acquisitionDate || "-")} · ${esc(a.acquisitionCost || 0)}</b></div></div><div style="display:flex;gap:8px;margin-top:20px"><button class="btn primary manager-action" onclick="editAsset('${id}')">Edit asset</button><button class="btn danger manager-action" onclick="deleteAsset('${id}')">Delete</button></div>`;
   document.getElementById("drawer").classList.add("open");
 }
 function closeDrawer() {
