@@ -29,7 +29,7 @@ export async function ensureDb() {
       email TEXT NOT NULL UNIQUE,
       emailVerified INTEGER NOT NULL DEFAULT 0,
       image TEXT,
-      role TEXT NOT NULL DEFAULT 'admin',
+      role TEXT NOT NULL DEFAULT 'employee',
       createdAt INTEGER NOT NULL,
       updatedAt INTEGER NOT NULL
     );
@@ -219,7 +219,7 @@ async function assertReferences(resource: ResourceName, values: Record<string, a
     if (values.department && !(await existsByName(tables.departments, tables.departments.name, values.department))) {
       throw new Error(`Unknown department: ${values.department}`);
     }
-    if (values.owner && !['-', '—', 'â€”'].includes(values.owner) && !(await existsByName(tables.employees, tables.employees.name, values.owner))) {
+    if (values.owner && !['-', '—'].includes(values.owner) && !(await existsByName(tables.employees, tables.employees.name, values.owner))) {
       throw new Error(`Unknown owner employee: ${values.owner}`);
     }
   }

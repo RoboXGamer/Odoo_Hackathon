@@ -3,7 +3,7 @@ import { z } from 'zod';
 const requiredText = z.string().trim().min(1);
 const status = <T extends [string, ...string[]]>(values: T) => z.enum(values);
 const blankAsDash = z.string().trim().transform((value) => value || '-');
-const normalizedDepartment = z.string().trim().transform((value) => ['-', '—', 'â€”'].includes(value) ? 'Unassigned' : value).pipe(requiredText);
+const normalizedDepartment = z.string().trim().transform((value) => ['-', '—'].includes(value) ? 'Unassigned' : value).pipe(requiredText);
 const timeText = z.string().trim().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, 'Expected time in HH:mm format');
 
 export const assetSchema = z.object({

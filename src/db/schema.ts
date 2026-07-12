@@ -6,7 +6,7 @@ export const user = sqliteTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: int('emailVerified', { mode: 'boolean' }).notNull().default(false),
   image: text('image'),
-  role: text('role').notNull().default('admin'),
+  role: text('role').notNull().default('employee'),
   createdAt: int('createdAt', { mode: 'timestamp' }).notNull(),
   updatedAt: int('updatedAt', { mode: 'timestamp' }).notNull(),
 });
