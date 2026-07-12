@@ -92,7 +92,20 @@ export const auditSchema = z.object({
   location: requiredText,
   status: status(['Verified', 'Missing', 'Damaged']),
   note: z.string().trim().default(''),
+  cycleId: requiredText.default('AUDIT-Q3'),
 });
+
+export const auditCycleSchema = z.object({
+  id: requiredText,
+  name: requiredText,
+  department: z.string().trim().default(''),
+  location: z.string().trim().default(''),
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  auditors: requiredText,
+  status: status(['Open', 'Closed']).default('Open'),
+  closedAt: z.string().trim().default(''),
+}).refine((value) => value.endDate >= value.startDate, { message: 'End date must not be before start date', path: ['endDate'] });
 
 export const transferSchema = z.object({
   id: requiredText,
@@ -135,6 +148,7 @@ export const resourceSchemas = {
   maintenance: maintenanceSchema,
   bookings: bookingSchema,
   audits: auditSchema,
+  auditCycles: auditCycleSchema,
   transfers: transferSchema,
   allocations: allocationSchema,
   logs: logSchema,

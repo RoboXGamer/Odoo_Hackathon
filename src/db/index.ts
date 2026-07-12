@@ -144,7 +144,19 @@ export async function ensureDb() {
       name TEXT NOT NULL,
       location TEXT NOT NULL,
       status TEXT NOT NULL,
-      note TEXT NOT NULL
+      note TEXT NOT NULL,
+      cycle_id TEXT NOT NULL DEFAULT 'AUDIT-Q3'
+    );
+    CREATE TABLE IF NOT EXISTS audit_cycles (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      department TEXT NOT NULL DEFAULT '',
+      location TEXT NOT NULL DEFAULT '',
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      auditors TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Open',
+      closed_at TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS transfers (
       id TEXT PRIMARY KEY NOT NULL,
@@ -197,6 +209,7 @@ export async function ensureDb() {
     "ALTER TABLE maintenance_requests ADD COLUMN priority TEXT NOT NULL DEFAULT 'Medium'",
     "ALTER TABLE maintenance_requests ADD COLUMN requester TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE maintenance_requests ADD COLUMN photo TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audits ADD COLUMN cycle_id TEXT NOT NULL DEFAULT 'AUDIT-Q3'",
   ]) {
     try {
       await client.execute(statement);
@@ -214,6 +227,7 @@ export async function ensureDb() {
   await db.insert(tables.maintenance).values(seedData.maintenance).onConflictDoNothing();
   await db.insert(tables.bookings).values(seedData.bookings).onConflictDoNothing();
   await db.insert(tables.audits).values(seedData.audits).onConflictDoNothing();
+  await db.insert(tables.auditCycles).values({ id: 'AUDIT-Q3', name: 'Engineering asset audit', department: 'Engineering', location: '', startDate: '2026-07-01', endDate: '2026-07-15', auditors: 'A. Rao, S. Iqbal', status: 'Open', closedAt: '' }).onConflictDoNothing();
   if (seedData.transfers.length) {
     await db.insert(tables.transfers).values(seedData.transfers).onConflictDoNothing();
   }
@@ -238,6 +252,7 @@ export async function getAppState() {
     maintenance: await db.select().from(tables.maintenance),
     bookings: await db.select().from(tables.bookings),
     audits: await db.select().from(tables.audits),
+    auditCycles: await db.select().from(tables.auditCycles),
     transfers: await db.select().from(tables.transfers),
     allocations: allocationRows.map((item) => ({ ...item, overdue: item.status !== 'Returned' && Boolean(item.expectedReturn) && item.expectedReturn < today })),
     logs: await db.select({
@@ -260,6 +275,7 @@ const resourceConfig = {
   maintenance: { table: tables.maintenance, idColumn: tables.maintenance.id },
   bookings: { table: tables.bookings, idColumn: tables.bookings.id },
   audits: { table: tables.audits, idColumn: tables.audits.asset },
+  auditCycles: { table: tables.auditCycles, idColumn: tables.auditCycles.id },
   transfers: { table: tables.transfers, idColumn: tables.transfers.id },
   allocations: { table: tables.allocations, idColumn: tables.allocations.id },
   logs: { table: tables.logs, idColumn: tables.logs.id },
@@ -408,6 +424,13 @@ export async function updateResourceItem(resource: ResourceName, id: string, pay
   if (resource === 'maintenance' && ['Approved', 'Resolved'].includes((values as any).status)) {
     const [request] = await db.select().from(tables.maintenance).where(eq(tables.maintenance.id, id));
     await db.update(tables.assets).set({ status: (values as any).status === 'Approved' ? 'Under Maintenance' : 'Available', updated: 'Just now' }).where(eq(tables.assets.id, request.asset));
+  }
+  if (resource === 'auditCycles' && (values as any).status === 'Closed') {
+    const items = await db.select().from(tables.audits).where(eq(tables.audits.cycleId, id));
+    for (const item of items.filter((audit) => audit.status === 'Missing')) {
+      await db.update(tables.assets).set({ status: 'Lost', updated: 'Just now' }).where(eq(tables.assets.id, item.asset));
+    }
+    await db.update(tables.auditCycles).set({ closedAt: new Date().toISOString() }).where(eq(tables.auditCycles.id, id));
   }
   if (resource === 'employees' && (values as any).role) {
     const [employee] = await db.select().from(tables.employees).where(eq(tables.employees.id, id));

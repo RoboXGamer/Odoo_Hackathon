@@ -139,6 +139,19 @@ export const audits = sqliteTable('audits', {
   location: text('location').notNull(),
   status: text('status').notNull(),
   note: text('note').notNull(),
+  cycleId: text('cycle_id').notNull().default('AUDIT-Q3'),
+});
+
+export const auditCycles = sqliteTable('audit_cycles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  department: text('department').notNull().default(''),
+  location: text('location').notNull().default(''),
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date').notNull(),
+  auditors: text('auditors').notNull(),
+  status: text('status').notNull().default('Open'),
+  closedAt: text('closed_at').notNull().default(''),
 });
 
 export const transfers = sqliteTable('transfers', {
@@ -186,6 +199,7 @@ export const schema = {
   maintenance,
   bookings,
   audits,
+  auditCycles,
   transfers,
   allocations,
   logs,

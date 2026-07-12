@@ -17,6 +17,7 @@ const managerWritable: ResourceName[] = [
   'transfers',
   'logs',
   'allocations',
+  'auditCycles',
 ];
 
 function can(role: Role, resource: ResourceName, action: Action) {
