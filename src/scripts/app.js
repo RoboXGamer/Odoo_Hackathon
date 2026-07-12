@@ -295,6 +295,8 @@ function renderAllocation() {
       ? (records.map((x) => `<div class="history-row"><span class="history-line"></span><div><b>${esc(x.holderType)}: ${esc(x.holder)}</b><small>${esc(x.allocatedAt)}${x.expectedReturn ? ` · Expected ${esc(x.expectedReturn)}` : ""} · ${esc(x.status)}</small></div></div>`).join("") || `<div class="history-row"><span class="history-line"></span><div><b>${esc(selectedAsset.name)} custody record</b><small>${esc(selectedAsset.updated)} - ${esc(selectedAsset.location)}</small></div></div>`)
       : '<div class="empty"><b>No asset selected</b>Choose an asset to view custody.</div>';
   }
+  const requests = document.getElementById("transferRequests");
+  if (requests) requests.innerHTML = (db.transfers || []).length ? db.transfers.map((x) => `<div class="list-row"><span><b>${esc(x.asset)} → ${esc(x.to)}</b><small style="display:block;color:var(--muted)">${esc(x.reason)}</small></span><span>${badge(x.status)} ${x.status === "Pending" ? `<button class="action-btn approval-action" onclick="decideTransfer('${x.id}','Approved')">Approve</button><button class="action-btn danger-text approval-action" onclick="decideTransfer('${x.id}','Rejected')">Reject</button>` : ""}</span></div>`).join("") : '<div class="empty"><b>No transfer requests</b></div>';
 }
 function renderAudit() {
   const body = document.querySelector('[data-title="Asset audit"] tbody');
@@ -761,6 +763,14 @@ function submitTransfer() {
   sec.querySelector("textarea").value = "";
   toast("Transfer request submitted");
 }
+function decideTransfer(id, status) {
+  const transfer = db.transfers.find((x) => x.id === id);
+  if (!transfer) return;
+  apiPatch("transfers", id, { status, decidedAt: new Date().toISOString() }).then(() => {
+    transfer.status = status === "Approved" ? "Completed" : status;
+    return apiCreate("logs", addLog("Approval", `Transfer ${transfer.status.toLowerCase()}: ${transfer.asset}`, `To ${transfer.to}`));
+  }).then(save).catch((e) => toast(e.message || "Unable to update transfer"));
+}
 function exportCSV(kind) {
   let rows =
     kind === "assets"
@@ -876,6 +886,7 @@ Object.assign(window, {
   deleteBooking,
   updateAudit,
   updateAuditNote,
+  decideTransfer,
 });
 createIcons({ icons });
 const appShell = document.querySelector(".app");
